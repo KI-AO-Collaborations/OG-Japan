@@ -165,11 +165,12 @@ def ETR_income(r, w, b, n, factor, e, etr_params, p):
     I = X + Y
     I2 = I ** 2
 
-    if p.tax_func_type == 'GS':
-        phi0 = np.squeeze(etr_params[..., 0])
-        phi1 = np.squeeze(etr_params[..., 1])
-        phi2 = np.squeeze(etr_params[..., 2])
-        tau = (phi0 * (I - ((I ** -phi1) + phi2) ** (-1 / phi1))) / I
+    if p.tax_func_type == 'GS': # modified
+        phi0 = 5.66885717e+01
+        phi1 = 8.89727694e-04
+        phi2 = 3.96781859e-01
+        tau = phi0 - phi0 * (phi1 * I ** phi2 + 1)**(-1 / phi2)
+       
     elif p.tax_func_type == 'DEP_totalinc':
         A = np.squeeze(etr_params[..., 0])
         B = np.squeeze(etr_params[..., 1])
@@ -264,17 +265,16 @@ def MTR_income(r, w, b, n, factor, mtr_capital, e, etr_params,
     I = X + Y
     I2 = I ** 2
 
-    if p.tax_func_type == 'GS':
+    if p.tax_func_type == 'GS': # modified
         if p.analytical_mtrs:
-            phi0 = np.squeeze(etr_params[..., 0])
-            phi1 = np.squeeze(etr_params[..., 1])
-            phi2 = np.squeeze(etr_params[..., 2])
+            phi0 = 5.66885717e+01
+            phi1 = 8.89727694e-04
+            phi2 = 3.96781859e-01
         else:
-            phi0 = np.squeeze(mtr_params[..., 0])
-            phi1 = np.squeeze(mtr_params[..., 1])
-            phi2 = np.squeeze(mtr_params[..., 2])
-        tau = (phi0*(1 - (I ** (-phi1 - 1) * ((I ** -phi1) + phi2)
-                          ** ((-1 - phi1) / phi1))))
+            print('Not using Analytical_mtrs !!!')
+        
+        tau = phi0 * phi1 * I ** (phi2 - 1) * (phi1 * I ** phi2 + 1) ** ( (- 1 - phi2) / phi2)
+
     elif p.tax_func_type == 'DEP_totalinc':
         if p.analytical_mtrs:
             A = np.squeeze(etr_params[..., 0])

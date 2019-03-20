@@ -314,12 +314,16 @@ def get_tax_rates(params, X, Y, wgts, tax_func_type, rate_type,
     I = X + Y
     if tax_func_type == 'GS':
         phi0, phi1, phi2 = params[:3]
+        phi0 = 5.66885717e+01
+        phi1 = 8.89727694e-04
+        phi2 = 3.96781859e-01
+
         if rate_type == 'etr':
-            txrates = (
-                (phi0 * (I - ((I ** -phi1) + phi2) ** (-1 / phi1))) / I)
+            txrates = phi0 - phi0 * (phi1 * I ** phi2 + 1)**(-1 / phi2) # modified
+        
         else:  # marginal tax rate function
-            txrates = (phi0*(1 - (I ** (-phi1 - 1) * ((I ** -phi1) + phi2)
-                                  ** ((-1 - phi1) / phi1))))
+            txrates = phi0 * phi1 * I ** (phi2 - 1) * (phi1 * I ** phi2 + 1) ** ( (- 1 - phi2) / phi2) # modified
+
     elif tax_func_type == 'DEP':
         A, B, C, D, max_x, max_y, share, min_x, min_y, shift = params
         shift_x = np.maximum(-min_x, 0.0) + 0.01 * (max_x - min_x)
@@ -879,26 +883,17 @@ def txfunc_est(df, s, t, rate_type, tax_func_type, numparams,
         params_to_plot = np.append(params[:4],
                                    np.array([max_x, max_y, share, min_x,
                                              min_y, shift]))
-    elif tax_func_type == "GS":
+    elif tax_func_type == "GS": # modified 
         '''
         Estimate Gouveia-Strauss parameters via least squares.
         Need to use a different functional form than for DEP function.
         '''
-        phi0_init = 1.0
-        phi1_init = 1.0
-        phi2_init = 1.0
-        params_init = np.array([phi0_init, phi1_init, phi2_init])
-        tx_objs = (np.array([None]), X, Y, txrates, wgts, tax_func_type,
-                   rate_type)
-        bnds = ((1e-12, None), (1e-12, None), (1e-12, None))
-        params_til = opt.minimize(wsumsq, params_init, args=(tx_objs),
-                                  method="L-BFGS-B", bounds=bnds, tol=1e-15)
-        phi0til, phi1til, phi2til = params_til.x
-        wsse = params_til.fun
+        wsse = 0.0
         obs = df.shape[0]
         params = np.zeros(numparams)
-        params[:3] = np.array([phi0til, phi1til, phi2til])
+        params[:3] = np.array([5.66885717e+01, 8.89727694e-04, 3.96781859e-01])
         params_to_plot = params
+
     elif tax_func_type == "linear":
         '''
         For linear rates, just take the mean ETR or MTR by age-year.

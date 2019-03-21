@@ -10,6 +10,7 @@ This file calls the following files:
 
 # Packages
 import numpy as np
+import pandas as pd
 from ogusa import tax, utils
 
 '''
@@ -195,6 +196,23 @@ def get_cons(r, w, b, b_splus1, n, bq, net_tax, e, tau_c, p):
     return cons
 
 
+def get_marg_sav(b_splus1, chi_b, epsilon, p):
+    '''
+    Assuming chi_b is a scalar, Added to Stitch 
+    '''
+    b_df = pd.DataFrame(b_splus1)
+    savings_ut = pd.DataFrame(np.ones(b_splus1.shape))
+    rho_df = pd.DataFrame(np.array(p.rho))
+    savings_ut[b_df >= epsilon] =\
+    rho_df[b_df >= epsilon] * (b_df[b_df >= epsilon] * np.exp(p.g_y)) ** (-p.sigma) * chi_b[0]
+    y1 = rho_df[b_df < epsilon] * (1 * epsilon * np.exp(p.g_y)) ** (-p.sigma) * chi_b[0]
+    y2 = rho_df[b_df < epsilon] * (2 * epsilon * np.exp(p.g_y)) ** (-p.sigma) * chi_b[0]
+    slope = (y2 - y1) / (2 * epsilon)
+    savings_ut[b_df < epsilon] =\
+        slope * (b_df[b_df < epsilon] - epsilon) + y1
+    return np.array(savings_ut).squeeze()
+
+
 def FOC_savings(r, w, b, b_splus1, n, bq, factor, T_H, theta, e, rho,
                 tau_c, etr_params, mtry_params, t, j, p, method):
     '''
@@ -263,6 +281,7 @@ def FOC_savings(r, w, b, b_splus1, n, bq, factor, T_H, theta, e, rho,
 
     Returns: euler
     '''
+    rho = p.rho # modified 
     if j is not None:
         chi_b = p.chi_b[j]
     else:
@@ -277,8 +296,7 @@ def FOC_savings(r, w, b, b_splus1, n, bq, factor, T_H, theta, e, rho,
     cons = get_cons(r, w, b, b_splus1, n, bq, taxes, e, tau_c, p)
     deriv = ((1 + r) - r * (tax.MTR_income(r, w, b, n, factor, True, e,
                                            etr_params, mtry_params, p)))
-    savings_ut = (rho * np.exp(-p.sigma * p.g_y) * chi_b *
-                  b_splus1 ** (-p.sigma))
+    savings_ut = get_marg_sav(b_splus1, chi_b, 1e-7, p) # Modified
     euler_error = np.zeros_like(n)
     if n.shape[0] > 1:
         euler_error[:-1] = (marg_ut_cons(cons[:-1], p.sigma) *

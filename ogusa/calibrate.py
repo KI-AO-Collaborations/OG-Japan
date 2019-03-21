@@ -43,7 +43,17 @@ from . import labor
 from . import SS
 from . import utils
 
-def chi_estimate(income_tax_params, ss_params, iterative_params, chi_guesses, baseline_dir="./OUTPUT"):
+
+def chi_n_func(s, a0, a1, a2, a3, a4):
+    chi_n = a0 + a1 * s + a2 * s ** 2 + a3 * s ** 3 + a4 * s ** 4
+    return chi_n
+
+def chebyshev_func(x, a0, a1, a2, a3, a4):
+    func = np.polynomial.chebyshev.chebval(x, [a0, a1, a2, a3, a4])
+    return func
+
+
+def chi_estimate(p, client=None):
     '''
     --------------------------------------------------------------------
     This function calls others to obtain the data momements and then
@@ -86,120 +96,100 @@ def chi_estimate(income_tax_params, ss_params, iterative_params, chi_guesses, ba
     --------------------------------------------------------------------
     '''
 
-    # unpack tuples of parameters
-    J, S, T, BW, beta, sigma, alpha, Z, delta, ltilde, nu, g_y,\
-                  g_n_ss, tau_payroll, tau_bq, rho, omega_SS, lambdas, \
-                  imm_rates, e, retire, mean_income_data, h_wealth, p_wealth,\
-                  m_wealth, b_ellipse, upsilon = ss_params
-    chi_b_guess, chi_n_guess = chi_guesses
+    baseline_dir="./OUTPUT"
+    #chi_b_guess = np.ones(80)
 
-    flag_graphs = False
+    # a0 = 5.38312524e+01
+    # a1 = -1.55746248e+00
+    # a2 = 1.77689237e-02
+    # a3 = -8.04751667e-06
+    # a4 = 5.65432019e-08
+    """ Kei's Vals
+    a0 = 170
+    a1 = -2.19154735e+00
+    a2 = -2.22817460e-02
+    a3 = 4.49993507e-04
+    a4 = -1.34197054e-06
+    """
+    """ Adam's Vals 1
+    a0 = 2.59572155e+02
+    a1 = -2.35122641e+01
+    a2 = 4.27581467e-01
+    a3 = -3.40808933e-03
+    a4 = 1.00404321e-05
+    """
 
-    # specify bootstrap iterations
-    n = 10000
+    a0 = 1.10807470e+03#5.19144310e+02
+    #a0 = 1.10807470e+03#5.19144310e+02
+    a1 = -1.05805189e+02#-4.70245283e+01
+    a2 = 1.92411660e+00#8.55162933e-01
+    a3 = -1.53364020e-02#-6.81617866e-03
+    a4 = 4.51819445e-05#2.00808642e-05
+    
+ 
+    # a0 = 2.07381e+02
+    # a1 = -1.03143105e+01
+    # a2 = 1.42760562e-01
+    # a3 = -8.41089078e-04
+    # a4 = 1.85173227e-06
 
-    # Generate Wealth data moments
-    scf, data = wealth.get_wealth_data()
-    wealth_moments = wealth.compute_wealth_moments(scf, lambdas, J)
 
+    # sixty_plus_chi = 300
+    params_init = np.array([a0, a1, a2, a3, a4])
 
     # Generate labor data moments
-    cps = labor.get_labor_data()
-    labor_moments = labor.compute_labor_moments(cps, S)
+    labor_hours = np.array([167, 165, 165, 165, 165, 166, 165, 165, 164])#, 166, 164])
 
+    labor_part_rate = np.array([0.69, 0.849, 0.849, 0.847, 0.847, 0.859, 0.859, 0.709, 0.709])#, 0.212, 0.212])
+
+    employ_rate = np.array([0.937, 0.954, 0.954, 0.966, 0.966, 0.97, 0.97, 0.968, 0.968])#, 0.978, 0.978])
+
+    labor_hours_adj = labor_hours * labor_part_rate * employ_rate
+
+    # get fraction of time endowment worked (assume time
+    # endowment is 24 hours minus required time to sleep 6.5 hours)
+    labor_moments = labor_hours_adj * 12 / (365 * 17.5)
+
+    #labor_moments[9] = 0.1
+    #labor_moments[10] = 0.1
 
     # combine moments
-    data_moments = list(wealth_moments.flatten()) + list(labor_moments.flatten())
+    data_moments = np.array(list(labor_moments.flatten()))
+
+    # weighting matrix
+    W = np.identity(p.J+2+p.S)
+    W = np.identity(9)
+
+    ages = np.linspace(20, 65, p.S // 2 + 5)
+    #ages = np.linspace(20, 100, p.S)
+
+    est_output = opt.minimize(minstat, params_init,\
+                args=(p, client, data_moments, W, ages),\
+                method="L-BFGS-B",\
+                tol=1e-15, options={'eps': 1e-10})
+    a0, a1, a2, a3, a4 = est_output.x
+    #chi_n = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    chi_n = np.ones(p.S)
+    #ages_full = np.linspace(20, 100, p.S)
+    #chi_n = chebyshev_func(ages_full, a0, a1, a2, a3, a4)
+    
+    chi_n[:p.S // 2 + 5] = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    slope = 1500#chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
+    chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
+    
+    #chi_n[chi_n < 0.5] = 0.5
+    #chi_n[chi_n < 0.5] = 0.5
+    p.chi_n = chi_n
+    print('PARAMS for Chebyshev:', est_output.x)
+    with open("output.txt", "a") as text_file:
+        text_file.write('\nPARAMS for Chebyshev: ' + str(est_output.x) + '\n')
+    pickle.dump(chi_n, open("chi_n.p", "wb"))
+
+    ss_output = SS.run_SS(p)
+    return ss_output
 
 
-    # determine weighting matrix
-    optimal_weight = False
-    if optimal_weight:
-        VCV_wealth_moments = wealth.VCV_moments(scf, n, lambdas, J)
-        VCV_labor_moments = labor.VCV_moments(cps, n, lambdas, S)
-        VCV_data_moments = np.zeros((J+2+S,J+2+S))
-        VCV_data_moments[:J+2,:J+2] = VCV_wealth_moments
-        VCV_data_moments[J+2:,J+2:] = VCV_labor_moments
-        W = np.linalg.inv(VCV_data_moments)
-        #np.savetxt('VCV_data_moments.csv',VCV_data_moments)
-    else:
-        W = np.identity(J+2+S)
-
-
-    # call minimizer
-    bnds = np.tile(np.array([1e-12, None]),(S+J,1)) # Need (1e-12, None) S+J times
-    chi_guesses_flat = list(chi_b_guess.flatten()) + list(chi_n_guess.flatten())
-
-    min_args = data_moments, W, income_tax_params, ss_params, \
-               iterative_params, chi_guesses_flat, baseline_dir
-    # est_output = opt.minimize(minstat, chi_guesses_flat, args=(min_args), method="L-BFGS-B", bounds=bnds,
-    #                 tol=1e-15, options={'maxfun': 1, 'maxiter': 1, 'maxls': 1})
-    # est_output = opt.minimize(minstat, chi_guesses_flat, args=(min_args), method="L-BFGS-B", bounds=bnds,
-    #                 tol=1e-15)
-    # chi_params = est_output.x
-    # objective_func_min = est_output.fun
-    #
-    # # pickle output
-    # utils.mkdirs(os.path.join(baseline_dir, "Calibration"))
-    # est_dir = os.path.join(baseline_dir, "Calibration/chi_estimation.pkl")
-    # pickle.dump(est_output, open(est_dir, "wb"))
-    #
-    # # save data and model moments and min stat to csv
-    # # to then put in table of paper
-    chi_params = chi_guesses_flat
-    chi_b = chi_params[:J]
-    chi_n = chi_params[J:]
-    chi_params_list = (chi_b, chi_n)
-
-    ss_output = SS.run_SS(income_tax_params, ss_params, iterative_params, chi_params_list, True, baseline_dir)
-    model_moments = calc_moments(ss_output, omega_SS, lambdas, S, J)
-
-    # # make dataframe for results
-    # columns = ['data_moment', 'model_moment', 'minstat']
-    # moment_fit = pd.DataFrame(index=range(0,J+2+S), columns=columns)
-    # moment_fit = moment_fit.fillna(0) # with 0s rather than NaNs
-    # moment_fit['data_moment'] = data_moments
-    # moment_fit['model_moment'] = model_moments
-    # moment_fit['minstat'] = objective_func_min
-    # est_dir = os.path.join(baseline_dir, "Calibration/moment_results.pkl")s
-    # moment_fit.to_csv(est_dir)
-
-    # calculate std errors
-    h = 0.0001  # pct change in parameter
-    model_moments_low = np.zeros((len(chi_params),len(model_moments)))
-    model_moments_high = np.zeros((len(chi_params),len(model_moments)))
-    chi_params_low = chi_params
-    chi_params_high = chi_params
-    for i in range(len(chi_params)):
-        chi_params_low[i] = chi_params[i]*(1+h)
-        chi_b = chi_params_low[:J]
-        chi_n = chi_params_low[J:]
-        chi_params_list = (chi_b, chi_n)
-        ss_output = SS.run_SS(income_tax_params, ss_params, iterative_params, chi_params_list, True, baseline_dir)
-        model_moments_low[i,:] = calc_moments(ss_output, omega_SS, lambdas, S, J)
-
-        chi_params_high[i] = chi_params[i]*(1+h)
-        chi_b = chi_params_high[:J]
-        chi_n = chi_params_high[J:]
-        chi_params_list = (chi_b, chi_n)
-        ss_output = SS.run_SS(income_tax_params, ss_params, iterative_params, chi_params_list, True, baseline_dir)
-        model_moments_high[i,:] = calc_moments(ss_output, omega_SS, lambdas, S, J)
-
-    deriv_moments = (np.asarray(model_moments_high) - np.asarray(model_moments_low)).T/(2.*h*np.asarray(chi_params))
-    VCV_params = np.linalg.inv(np.dot(np.dot(deriv_moments.T,W),deriv_moments))
-    std_errors_chi = (np.diag(VCV_params))**(1/2.)
-    sd_dir = os.path.join(baseline_dir, "Calibration/chi_std_errors.pkl")
-    pickle.dump(std_errors_chi, open(sd_dir, "wb"))
-
-    np.savetxt('chi_std_errors.csv',std_errors_chi)
-
-
-    return chi_params
-
-
-
-
-def minstat(chi_guesses, *args):
+def minstat(params, *args):
     '''
     --------------------------------------------------------------------
     This function generates the weighted sum of squared differences
@@ -208,7 +198,6 @@ def minstat(chi_guesses, *args):
     INPUTS:
     chi_guesses = [J+S,] vector, initial guesses of chi_b and chi_n stacked together
     arg         = length 6 tuple, variables needed for minimizer
-
 
     OTHER FUNCTIONS AND FILES CALLED BY THIS FUNCTION:
     SS.run_SS()
@@ -223,22 +212,52 @@ def minstat(chi_guesses, *args):
     --------------------------------------------------------------------
     '''
 
-    data_moments, W, income_tax_params, ss_params, iterative_params, chi_params, baseline_dir = args
-    J, S, T, BW, beta, sigma, alpha, Z, delta, ltilde, nu, g_y,\
-                  g_n_ss, tau_payroll, tau_bq, rho, omega_SS, lambdas, \
-                  imm_rates, e, retire, mean_income_data, h_wealth, p_wealth,\
-                  m_wealth, b_ellipse, upsilon = ss_params
-    chi_b = chi_guesses[:J]
-    chi_n = chi_guesses[J:]
-    chi_params = (chi_b, chi_n)
-    ss_output = SS.run_SS(income_tax_params, ss_params, iterative_params, chi_params, True, baseline_dir)
+    a0, a1, a2, a3, a4 = params
+    p, client, data_moments, W, ages = args
+    chi_n = np.ones(p.S)
+    #chi_n = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    chi_n[:p.S // 2 + 5] = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    #chi_n[p.S // 2 + 5:] = sixty_plus_chi
+    slope = chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
+    chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
+    #chi_n[chi_n < 0.5] = 0.5
 
-    model_moments = calc_moments(ss_output, omega_SS, lambdas, S, J)
+    p.chi_n = chi_n
+    #print(chi_n)
+
+    with open("output.txt", "a") as text_file:
+        text_file.write('\nPARAMS AT START\n' + str(params) + '\n')
+    print("-----------------------------------------------------")
+    print('PARAMS AT START' + str(params))
+    print("-----------------------------------------------------")
+
+    try:
+       ss_output = SS.run_SS(p, client)
+    except:
+        with open("output.txt", "a") as text_file:
+            text_file.write('\nSteady state not found\n' + str(params) + '\n')
+        print("-----------------------------------------------------")
+        print("Steady state not found")
+        print("-----------------------------------------------------")
+        return 1e100
+
+    with open("output.txt", "a") as text_file:
+        text_file.write('\nPARAMS AT END\n' + str(params) + '\n')
+    print("-----------------------------------------------------")
+    print('PARAMS AT END', params)
+    print("-----------------------------------------------------")
+    model_moments = calc_moments(ss_output, p.omega_SS, p.lambdas, p.S, p.J)
+    with open("output.txt", "a") as text_file:
+        text_file.write('\nModel moments:\n' + str(model_moments) + '\n')
+    print('Model moments:', model_moments)
+    print("-----------------------------------------------------")
 
     # distance with levels
-    distance = np.dot(np.dot((np.array(model_moments) - np.array(data_moments)).T,W),
-                   np.array(model_moments) - np.array(data_moments))
+    distance = np.dot(np.dot((np.array(model_moments[:9]) - np.array(data_moments)).T,W),
+                   np.array(model_moments[:9]) - np.array(data_moments))
     #distance = ((np.array(model_moments) - np.array(data_moments))**2).sum()
+    with open("output.txt", "a") as text_file:
+        text_file.write('\nDATA and MODEL DISTANCE: ' + str(distance) + '\n')
     print('DATA and MODEL DISTANCE: ', distance)
 
     # # distance with percentage diffs
@@ -275,99 +294,31 @@ def calc_moments(ss_output, omega_SS, lambdas, S, J):
     --------------------------------------------------------------------
     '''
     # unpack relevant SS variables
-    bssmat = ss_output['bssmat']
-    factor = ss_output['factor_ss']
     n = ss_output['nssmat']
-
-    # wealth moments
-    model_wealth_moments = the_inequalizer(bssmat, omega_SS, lambdas, factor, S, J)
 
     # labor moments
     model_labor_moments = (n.reshape(S, J) * lambdas.reshape(1, J)).sum(axis=1)
 
+    ### we have ages 20-100 so lets find binds based on population weights
+    # converting to match our data moments
+    model_labor_moments = pd.DataFrame(model_labor_moments * omega_SS)
+    model_labor_moments.rename({0: 'labor_weighted'}, axis=1, inplace=True)
+
+    ages = np.linspace(20, 100, S)
+    age_bins = np.linspace(20, 75, 12)
+    age_bins[11] = 101
+    labels = np.linspace(20, 70, 11)
+    model_labor_moments['pop_dist'] = omega_SS
+    model_labor_moments['age_bins'] = pd.cut(ages, age_bins, right=False, include_lowest=True, labels=labels)
+    weighted_labor_moments = model_labor_moments.groupby('age_bins')['labor_weighted'].sum() /\
+                                model_labor_moments.groupby('age_bins')['pop_dist'].sum()
+
+
+    # For visualization purpose:
+
+
+
     # combine moments
-    model_moments = list(model_wealth_moments.flatten()) + list(model_labor_moments.flatten())
+    model_moments = list(weighted_labor_moments)
 
     return model_moments
-
-
-def the_inequalizer(dist, pop_weights, ability_weights, factor, S, J):
-    '''
-    --------------------------------------------------------------------
-    Generates three measures of inequality.
-
-    Inputs:
-        dist            = [S,J] array, distribution of endogenous variables over age and lifetime income group
-        pop_weights     = [S,] vector, fraction of population by each age
-        ability_weights = [J,] vector, fraction of population for each lifetime income group
-        factor          = scalar, factor relating model units to dollars
-        S               = integer, number of economically active periods in lifetime
-        J               = integer, number of ability types
-
-    Functions called: None
-
-    Objects in function:
-        weights           = [S,J] array, fraction of population for each age and lifetime income group
-        flattened_dist    = [S*J,] vector, vectorized dist
-        flattened_weights = [S*J,] vector, vectorized weights
-        sort_dist         = [S*J,] vector, ascending order vector of dist
-        loc_90th          = integer, index of 90th percentile
-        loc_10th          = integer, index of 10th percentile
-        loc_99th          = integer, index of 99th percentile
-
-    Returns: measure of inequality
-    --------------------------------------------------------------------
-    '''
-
-    weights = np.tile(pop_weights.reshape(S, 1), (1, J)) * \
-    ability_weights.reshape(1, J)
-    flattened_dist = dist.flatten()
-    flattened_weights = weights.flatten()
-    idx = np.argsort(flattened_dist)
-    sort_dist = flattened_dist[idx]
-    sort_weights = flattened_weights[idx]
-    cum_weights = np.cumsum(sort_weights)
-
-    # gini
-    p = cum_weights/cum_weights.sum()
-    nu = np.cumsum(sort_dist*sort_weights)
-    nu = nu/nu[-1]
-    gini_coeff = (nu[1:]*p[:-1]).sum() - (nu[:-1] * p[1:]).sum()
-
-
-    # variance
-    ln_dist = np.log(sort_dist*factor) # not scale invariant
-    weight_mean = (ln_dist*sort_weights).sum()/sort_weights.sum()
-    var_ln_dist = ((sort_weights*((ln_dist-weight_mean)**2)).sum())*(1./(sort_weights.sum()))
-
-
-    # 90/10 ratio
-    loc_90th = np.argmin(np.abs(cum_weights - .9))
-    loc_10th = np.argmin(np.abs(cum_weights - .1))
-    ratio_90_10 = sort_dist[loc_90th] / sort_dist[loc_10th]
-
-    # top 10% share
-    top_10_share= (sort_dist[loc_90th:] * sort_weights[loc_90th:]
-           ).sum() / (sort_dist * sort_weights).sum()
-
-    # top 1% share
-    loc_99th = np.argmin(np.abs(cum_weights - .99))
-    top_1_share = (sort_dist[loc_99th:] * sort_weights[loc_99th:]
-           ).sum() / (sort_dist * sort_weights).sum()
-
-    # calculate percentile shares (percentiles based on lambdas input)
-    dist_weight = (sort_weights*sort_dist)
-    total_dist_weight = dist_weight.sum()
-    cumsum = np.cumsum(sort_weights)
-    dist_sum = np.zeros((J,))
-    cum_weights = ability_weights.cumsum()
-    for i in range(J):
-        cutoff = sort_weights.sum() / (1./cum_weights[i])
-        dist_sum[i] = ((dist_weight[cumsum < cutoff].sum())/total_dist_weight)
-
-
-    dist_share = np.zeros((J,))
-    dist_share[0] = dist_sum[0]
-    dist_share[1:] = dist_sum[1:]-dist_sum[0:-1]
-
-    return np.append([dist_share], [gini_coeff,var_ln_dist])

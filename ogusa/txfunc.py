@@ -324,52 +324,6 @@ def get_tax_rates(params, X, Y, wgts, tax_func_type, rate_type,
         else:  # marginal tax rate function
             txrates = phi0 * phi1 * I ** (phi2 - 1) * (phi1 * I ** phi2 + 1) ** ( (- 1 - phi2) / phi2) # modified
 
-    elif tax_func_type == 'DEP':
-        A, B, C, D, max_x, max_y, share, min_x, min_y, shift = params
-        shift_x = np.maximum(-min_x, 0.0) + 0.01 * (max_x - min_x)
-        shift_y = np.maximum(-min_y, 0.0) + 0.01 * (max_y - min_y)
-        Etil = A + B
-        Ftil = C + D
-        if for_estimation:
-            X2bar = (X2 * wgts).sum() / wgts.sum()
-            Xbar = (X * wgts).sum() / wgts.sum()
-            Y2bar = (Y2 * wgts).sum() / wgts.sum()
-            Ybar = (Y * wgts).sum() / wgts.sum()
-            X2til = (X2 - X2bar) / X2bar
-            Xtil = (X - Xbar) / Xbar
-            Y2til = (Y2 - Y2bar) / Y2bar
-            Ytil = (Y - Ybar) / Ybar
-            tau_x = (((max_x - min_x) * (A * X2til + B * Xtil + Etil) /
-                      (A * X2til + B * Xtil + Etil + 1)) + min_x)
-            tau_y = (((max_y - min_y) * (C * Y2til + D * Ytil + Ftil) /
-                      (C * Y2til + D * Ytil + Ftil + 1)) + min_y)
-            txrates = (((tau_x + shift_x) ** share) *
-                       ((tau_y + shift_y) ** (1 - share))) + shift
-        else:
-            tau_x = (((max_x - min_x) * (A * X2 + B * X) /
-                      (A * X2 + B * X + 1)) + min_x)
-            tau_y = (((max_y - min_y) * (C * Y2 + D * Y) /
-                      (C * Y2 + D * Y + 1)) + min_y)
-            txrates = (((tau_x + shift_x) ** share) *
-                       ((tau_y + shift_y) ** (1 - share))) + shift
-    elif tax_func_type == 'DEP_totalinc':
-        A, B, max_I, min_I, shift = params
-        shift_I = np.maximum(-min_I, 0.0) + 0.01 * (max_I - min_I)
-        Etil = A + B
-        I2 = I ** 2
-        if for_estimation:
-            I2bar = (I2 * wgts).sum() / wgts.sum()
-            Ibar = (I * wgts).sum() / wgts.sum()
-            I2til = (I2 - I2bar) / I2bar
-            Itil = (I - Ibar) / Ibar
-            tau_I = (((max_I - min_I) * (A * I2til + B * Itil + Etil) /
-                      (A * I2til + B * Itil + Etil + 1)) + min_I)
-            txrates = tau_I + shift_I + shift
-        else:
-            tau_I = (((max_I - min_I) * (A * I2 + B * I) /
-                      (A * I2 + B * I + 1)) + min_I)
-            txrates = tau_I + shift_I + shift
-
     return txrates
 
 
@@ -805,85 +759,7 @@ def txfunc_est(df, s, t, rate_type, tax_func_type, numparams,
     min_x = txrates[(df['Total capital income'] < y_10pctl)].min()
     min_y = txrates[(df['Total labor income'] < x_10pctl)].min()
 
-    if tax_func_type == 'DEP':
-        '''
-        Estimate DeBacker, Evans, Phillips (2018) ratio of polynomial
-        tax functions.
-        '''
-        Atil_init = 1.0
-        Btil_init = 1.0
-        Ctil_init = 1.0
-        Dtil_init = 1.0
-        max_x_init = np.minimum(
-            txrates[(df['Total capital income'] < y_20pctl)].max(), 0.7)
-        max_y_init = np.minimum(
-            txrates[(df['Total labor income'] < x_20pctl)].max(), 0.7)
-        shift = txrates[(df['Total labor income'] < x_20pctl) |
-                        (df['Total capital income'] < y_20pctl)].min()
-        share_init = 0.5
-        params_init = np.array([Atil_init, Btil_init, Ctil_init,
-                                Dtil_init, max_x_init, max_y_init,
-                                share_init])
-        tx_objs = (np.array([min_x, min_y, shift]), X, Y, txrates, wgts,
-                   tax_func_type, rate_type)
-        lb_max_x = np.maximum(min_x, 0.0) + 1e-4
-        lb_max_y = np.maximum(min_y, 0.0) + 1e-4
-        bnds = ((1e-12, None), (1e-12, None), (1e-12, None), (1e-12, None),
-                (lb_max_x, 0.8), (lb_max_y, 0.8), (0, 1))
-        params_til = opt.minimize(wsumsq, params_init, args=(tx_objs),
-                                  method="L-BFGS-B", bounds=bnds, tol=1e-15)
-        Atil, Btil, Ctil, Dtil, max_x, max_y, share = params_til.x
-        # message = ("(max_x, min_x)=(" + str(max_x) + ", " + str(min_x) +
-        #     "), (max_y, min_y)=(" + str(max_y) + ", " + str(min_y) + ")")
-        # print(message)
-        wsse = params_til.fun
-        obs = df.shape[0]
-        shift_x = np.maximum(-min_x, 0.0) + 0.01 * (max_x - min_x)
-        shift_y = np.maximum(-min_y, 0.0) + 0.01 * (max_y - min_y)
-        params = np.zeros(numparams)
-        params[:4] = (np.array([Atil, Btil, Ctil, Dtil]) /
-                      np.array([X2bar, Xbar, Y2bar, Ybar]))
-        params[4:] = np.array([max_x, min_x, max_y, min_y, shift_x, shift_y,
-                               shift, share])
-        params_to_plot = np.append(params[:4],
-                                   np.array([max_x, max_y, share, min_x,
-                                             min_y, shift]))
-    elif tax_func_type == 'DEP_totalinc':
-        '''
-        Estimate DeBacker, Evans, Phillips (2018) ratio of polynomial
-        tax functions as a function of total income.
-        '''
-        Atil_init = 1.0
-        Btil_init = 1.0
-        max_x_init = np.minimum(
-            txrates[(df['Total capital income'] < y_20pctl)].max(), 0.7)
-        max_y_init = np.minimum(
-            txrates[(df['Total labor income'] < x_20pctl)].max(), 0.7)
-        max_I_init = max(max_x_init, max_y_init)
-        min_I = min(min_x, min_y)
-        shift = txrates[(df['Total labor income'] < x_20pctl) |
-                        (df['Total capital income'] < y_20pctl)].min()
-        share_init = 0.5
-        params_init = np.array([Atil_init, Btil_init, max_I_init])
-        tx_objs = (np.array([min_I, shift]), X, Y, txrates, wgts,
-                   tax_func_type, rate_type)
-        lb_max_I = np.maximum(min_I, 0.0) + 1e-4
-        bnds = ((1e-12, None), (1e-12, None), (lb_max_I, 0.8))
-        params_til = opt.minimize(wsumsq, params_init, args=(tx_objs),
-                                  method="L-BFGS-B", bounds=bnds, tol=1e-15)
-        Atil, Btil, max_I = params_til.x
-        wsse = params_til.fun
-        obs = df.shape[0]
-        shift_I = np.maximum(-min_I, 0.0) + 0.01 * (max_I - min_I)
-        params = np.zeros(numparams)
-        params[:4] = (np.array([Atil, Btil, 0.0, 0.0]) /
-                      np.array([I2bar, Ibar, Y2bar, Ybar]))
-        params[4:] = np.array([max_I, min_I, 0.0, 0.0, shift_I, 0.0,
-                               shift, 1.0])
-        params_to_plot = np.append(params[:4],
-                                   np.array([max_x, max_y, share, min_x,
-                                             min_y, shift]))
-    elif tax_func_type == "GS": # modified 
+    if tax_func_type == "GS": # modified 
         '''
         Estimate Gouveia-Strauss parameters via least squares.
         Need to use a different functional form than for DEP function.
@@ -894,17 +770,6 @@ def txfunc_est(df, s, t, rate_type, tax_func_type, numparams,
         params[:3] = np.array([5.66885717e+01, 8.89727694e-04, 3.96781859e-01])
         params_to_plot = params
 
-    elif tax_func_type == "linear":
-        '''
-        For linear rates, just take the mean ETR or MTR by age-year.
-        Can use DEP form and set all parameters except for the shift
-        parameter to zero.
-        '''
-        params = np.zeros(numparams)
-        wsse = 0.0
-        obs = df.shape[0]
-        params[10] = txrates.mean()
-        params_to_plot = params[1:11]
     else:
         raise RuntimeError("Choice of tax function is not in the set of"
                            + " possible tax functions.  Please select"

@@ -43,7 +43,7 @@ def select_fert_data(fert, set_zeroes=False):
         return new_fert.astype(float)
 #%%
 def get_fert(totpers, min_yr, max_yr, graph=False):
-    pop_filename = "/data/Population.csv"
+    pop_filename = "../ogusa/data/demographic/Population.csv"
     pop_data = pd.read_csv(pop_filename, sep='\s+', usecols=["Year", "Age", "Total"])
     pop_data = select_data(pop_data)
     pop_data_samp = pop_data[(pop_data['Age'] >= min_yr - 1) &
@@ -52,7 +52,7 @@ def get_fert(totpers, min_yr, max_yr, graph=False):
     curr_pop_pct = curr_pop / curr_pop.sum() # pct population of that age group within same year
     # Get fertility rate by age-bin data
 
-    fert_filename = "/data/Fertility.csv"
+    fert_filename = "../ogusa/data/demographic/Fertility.csv"
     fert_data = pd.read_csv(fert_filename,\
         usecols=["Year1", "Age", "   ASFR", "AgeDef",\
                         "Collection", "   RefCode"])
@@ -182,14 +182,14 @@ def select_data(data):
 #%%
 def get_mort(totpers, min_yr, max_yr, graph=False):
     # Get mortality rate by age data
-    infmort_rate = 1.9 / 1000  # https://knoema.com/atlas/Japan/Infant-mortality-rate
+    infmort_rate = 0#1.9 / 1000  # https://knoema.com/atlas/Japan/Infant-mortality-rate
 
-    mort_filename = "/data/Mortality.csv"
+    mort_filename = "../ogusa/data/demographic/Mortality.csv"
 
     mort = pd.read_csv(mort_filename, sep="\s+", usecols=["Year", "Age", "Total"])
     mort = select_data(mort)[:110] # because don't know how to deal with 110
 
-    pop_filename = "/data/Population.csv"
+    pop_filename = "../ogusa/data/demographic/Population.csv"
     pop = pd.read_csv(pop_filename, sep="\s+", usecols=["Year", "Age", "Total"])
     pop = select_data(pop)[:110]
 
@@ -220,8 +220,11 @@ def get_mort(totpers, min_yr, max_yr, graph=False):
         end_sub_bin = int(np.rint((i + 1) * num_sub_bins))
         tot_period_surv = (np.log(mort_rates_sub_orig[beg_sub_bin:end_sub_bin]) ).sum()
         end_surv = np.log(1 - mort_rates_all.iloc[i])
-        pow = end_surv / tot_period_surv
-        mort_rates_sub[beg_sub_bin:end_sub_bin] = mort_rates_sub_orig[beg_sub_bin:end_sub_bin] ** pow
+        if tot_period_surv != 0:
+            power = end_surv / tot_period_surv
+        else:
+            power = 0
+        mort_rates_sub[beg_sub_bin:end_sub_bin] = mort_rates_sub_orig[beg_sub_bin:end_sub_bin] ** power
 
     mort_rates = np.zeros(totpers)
     end_sub_bin = 0
@@ -313,7 +316,7 @@ def select_immdata(data):
         return new_data
 #%%
 def get_imm_resid(totpers, min_yr, max_yr, graph=True):
-    pop_filename = "/data/Population.csv"
+    pop_filename = "../ogusa/data/demographic/Population.csv"
 
     pop_data = pd.read_csv(pop_filename, sep="\s+", usecols=["Year", "Age", "Total"])
     pop_data = select_immdata(pop_data)
@@ -425,7 +428,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=True):
 
     # Generate time path of the nonstationary population distribution
     omega_path_lev = np.zeros((E + S, T + S))
-    pop_filename = "/data/Population.csv"
+    pop_filename = "../ogusa/data/demographic/Population.csv"
 
     pop_data = pd.read_csv(pop_filename, sep="\s+", usecols=["Year", "Age", "Total"])
     pop_data = select_immdata(pop_data)

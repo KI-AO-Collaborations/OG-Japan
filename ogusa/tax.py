@@ -65,6 +65,7 @@ def replacement_rate_vals(nssmat, wss, factor_ss, j, p):
                       p.PIA_rate_bkt_2 * (p.AIME_bkt_2 - p.AIME_bkt_1) +
                       p.PIA_rate_bkt_3 * (AIME[j] - p.AIME_bkt_2))
     # Set the maximum monthly replacment rate from SS benefits tables
+    # PIA[np.isnan(PIA)] = p.PIA_maxpayment # Modified
     PIA[PIA > p.PIA_maxpayment] = p.PIA_maxpayment
     if p.PIA_minpayment != 0.0:
         PIA[PIA < p.PIA_minpayment] = p.PIA_minpayment
@@ -170,37 +171,6 @@ def ETR_income(r, w, b, n, factor, e, etr_params, p):
         phi1 = 8.89727694e-04
         phi2 = 3.96781859e-01
         tau = phi0 - phi0 * (phi1 * I ** phi2 + 1)**(-1 / phi2)
-       
-    elif p.tax_func_type == 'DEP_totalinc':
-        A = np.squeeze(etr_params[..., 0])
-        B = np.squeeze(etr_params[..., 1])
-        max_I = np.squeeze(etr_params[..., 4])
-        min_I = np.squeeze(etr_params[..., 5])
-        shift_I = np.squeeze(etr_params[..., 8])
-        shift = np.squeeze(etr_params[..., 10])
-        tau_I = (((max_I - min_I) * (A * I2 + B * I) /
-                  (A * I2 + B * I + 1)) + min_I)
-        tau = tau_I + shift_I + shift
-    else:  # DEP or linear
-        A = np.squeeze(etr_params[..., 0])
-        B = np.squeeze(etr_params[..., 1])
-        C = np.squeeze(etr_params[..., 2])
-        D = np.squeeze(etr_params[..., 3])
-        max_x = np.squeeze(etr_params[..., 4])
-        min_x = np.squeeze(etr_params[..., 5])
-        max_y = np.squeeze(etr_params[..., 6])
-        min_y = np.squeeze(etr_params[..., 7])
-        shift_x = np.squeeze(etr_params[..., 8])
-        shift_y = np.squeeze(etr_params[..., 9])
-        shift = np.squeeze(etr_params[..., 10])
-        share = np.squeeze(etr_params[..., 11])
-
-        tau_x = ((max_x - min_x) * (A * X2 + B * X) /
-                 (A * X2 + B * X + 1) + min_x)
-        tau_y = ((max_y - min_y) * (C * Y2 + D * Y) /
-                 (C * Y2 + D * Y + 1) + min_y)
-        tau = (((tau_x + shift_x) ** share) *
-               ((tau_y + shift_y) ** (1 - share))) + shift
 
     return tau
 
@@ -274,86 +244,7 @@ def MTR_income(r, w, b, n, factor, mtr_capital, e, etr_params,
             print('Not using Analytical_mtrs !!!')
         
         tau = phi0 * phi1 * I ** (phi2 - 1) * (phi1 * I ** phi2 + 1) ** ( (- 1 - phi2) / phi2)
-
-    elif p.tax_func_type == 'DEP_totalinc':
-        if p.analytical_mtrs:
-            A = np.squeeze(etr_params[..., 0])
-            B = np.squeeze(etr_params[..., 1])
-            max_I = np.squeeze(etr_params[..., 4])
-            min_I = np.squeeze(etr_params[..., 5])
-            shift_I = np.squeeze(etr_params[..., 8])
-            shift = np.squeeze(etr_params[..., 10])
-            d_etr = ((max_I - min_I) * ((2 * A * I + B) /
-                     ((A * I2 + B * I + 1) ** 2)))
-            etr = (((max_I - min_I) * ((A * I2 + B * I) /
-                   (A * I2 + B * I + 1)) + min_I) + shift_I + shift)
-            tau = (d_etr * I) + (etr)
-        else:
-            A = np.squeeze(mtr_params[..., 0])
-            B = np.squeeze(mtr_params[..., 1])
-            max_I = np.squeeze(mtr_params[..., 4])
-            min_I = np.squeeze(mtr_params[..., 5])
-            shift_I = np.squeeze(mtr_params[..., 8])
-            shift = np.squeeze(mtr_params[..., 10])
-            tau_I = (((max_I - min_I) * (A * I2 + B * I) /
-                     (A * I2 + B * I + 1)) + min_I)
-            tau = tau_I + shift_I + shift
-    else:  # DEP or linear
-        if p.analytical_mtrs:
-            A = np.squeeze(etr_params[..., 0])
-            B = np.squeeze(etr_params[..., 1])
-            C = np.squeeze(etr_params[..., 2])
-            D = np.squeeze(etr_params[..., 3])
-            max_x = np.squeeze(etr_params[..., 4])
-            min_x = np.squeeze(etr_params[..., 5])
-            max_y = np.squeeze(etr_params[..., 6])
-            min_y = np.squeeze(etr_params[..., 7])
-            shift_x = np.squeeze(etr_params[..., 8])
-            shift_y = np.squeeze(etr_params[..., 9])
-            shift = np.squeeze(etr_params[..., 10])
-            share = np.squeeze(etr_params[..., 11])
-
-            tau_x = ((max_x - min_x) * (A * X2 + B * X) /
-                     (A * X2 + B * X + 1) + min_x)
-            tau_y = ((max_y - min_y) * (C * Y2 + D * Y) /
-                     (C * Y2 + D * Y + 1) + min_y)
-            etr = (((tau_x + shift_x) ** share) *
-                   ((tau_y + shift_y) ** (1 - share))) + shift
-            if mtr_capital:
-                d_etr = ((1-share) * ((tau_y + shift_y) ** (-share)) *
-                         (max_y - min_y) * ((2 * C * Y + D) /
-                                            ((C * Y2 + D * Y + 1)
-                                             ** 2)) *
-                         ((tau_x + shift_x) ** share))
-                tau = d_etr * I + etr
-            else:
-                d_etr = (share * ((tau_x + shift_x) ** (share - 1)) *
-                         (max_x - min_x) * ((2 * A * X + B) /
-                                            ((A * X2 + B * X + 1)
-                                             ** 2)) *
-                         ((tau_y + shift_y) ** (1 - share)))
-                tau = d_etr * I + etr
-        else:
-            A = np.squeeze(mtr_params[..., 0])
-            B = np.squeeze(mtr_params[..., 1])
-            C = np.squeeze(mtr_params[..., 2])
-            D = np.squeeze(mtr_params[..., 3])
-            max_x = np.squeeze(mtr_params[..., 4])
-            min_x = np.squeeze(mtr_params[..., 5])
-            max_y = np.squeeze(mtr_params[..., 6])
-            min_y = np.squeeze(mtr_params[..., 7])
-            shift_x = np.squeeze(mtr_params[..., 8])
-            shift_y = np.squeeze(mtr_params[..., 9])
-            shift = np.squeeze(mtr_params[..., 10])
-            share = np.squeeze(mtr_params[..., 11])
-
-            tau_x = ((max_x - min_x) * (A * X2 + B * X) /
-                     (A * X2 + B * X + 1) + min_x)
-            tau_y = ((max_y - min_y) * (C * Y2 + D * Y) /
-                     (C * Y2 + D * Y + 1) + min_y)
-            tau = (((tau_x + shift_x) ** share) *
-                   ((tau_y + shift_y) ** (1 - share))) + shift
-
+    
     return tau
 
 

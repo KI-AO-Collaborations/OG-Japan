@@ -22,7 +22,7 @@ import scipy.optimize as opt
 import pickle
 from dask import compute, delayed
 import dask.multiprocessing
-from ogusa import tax, household, firm, utils
+from ogusa import tax, household, firm, utils, calibrate
 from ogusa import aggregates as aggr
 import os
 import warnings
@@ -109,6 +109,23 @@ def euler_equation_solver(guesses, *args):
     n_guess = np.array(guesses[p.S:])
     b_s = np.array([0] + list(b_guess[:-1]))
     b_splus1 = b_guess
+
+    # Below Modified
+    if np.isnan(b_s).any() or (b_s < 0).any()\
+        or (n_guess < 0).any() or np.isnan(r).any()\
+        or np.isnan(w).any() or (w < 0).any():
+        b_s = np.array(b_s)
+        b_s = b_s[~np.isnan(b_s)]
+        n_guess = np.array(n_guess)
+        n_guess = n_guess[~np.isnan(n_guess)]
+        w = np.array(w)
+        w = w[~np.isnan(w)]
+        error_sum = b_s[b_s < 0].sum().sum() +\
+            n_guess[n_guess < 0].sum().sum() +\
+            w[w < 0].sum().sum()
+        error1 = [1e3 * error_sum] * 80
+        error2 = [1e3 * error_sum] * 80
+        return np.hstack((error1, error2))
 
     theta = tax.replacement_rate_vals(n_guess, w, factor, j, p)
 
@@ -617,6 +634,13 @@ def SS_fsolve(guesses, *args):
     (euler_errors, bssmat, nssmat, new_r, new_w, new_T_H, new_Y,
      new_factor, new_BQ, average_income_model) =\
         inner_loop(outer_loop_vars, p, client)
+
+    nssmat = {'nssmat': nssmat} # Modified
+    nssmat = calibrate.calc_moments(nssmat, p.omega_SS, p.lambdas, p.S, p.J) # Modified
+    print('----------------------------------------') # Modified
+    print('Uncalibrated labor moments:') # Modified
+    print(nssmat) # Modified
+    print('----------------------------------------') # Modified
 
     # Create list of errors in general equilibrium variables
     error1 = new_r - r

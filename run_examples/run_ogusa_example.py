@@ -5,7 +5,8 @@ from dask.distributed import Client
 import time
 import numpy as np
 
-from taxcalc import Calculator
+#from taxcalc import Calculator # Modified
+import ogusa
 from ogusa import postprocess
 from ogusa.execute import runner
 from ogusa.utils import REFORM_DIR, BASELINE_DIR
@@ -18,8 +19,8 @@ def run_micro_macro(user_params):
     reform_url = ('https://raw.githubusercontent.com/'
                   'PSLmodels/Tax-Calculator/master/taxcalc/'
                   'reforms/2017_law.json')
-    ref = Calculator.read_json_param_objects(reform_url, None)
-    reform = ref['policy']
+    #ref = Calculator.read_json_param_objects(reform_url, None) # Modified
+    #reform = ref['policy'] # Modified
 
     # Define parameters to use for multiprocessing
     client = Client(processes=False)

@@ -123,8 +123,8 @@ def euler_equation_solver(guesses, *args):
         error_sum = b_s[b_s < 0].sum().sum() +\
             n_guess[n_guess < 0].sum().sum() +\
             w[w < 0].sum().sum()
-        error1 = [1e3 * error_sum] * 80
-        error2 = [1e3 * error_sum] * 80
+        error1 = [1e14 + abs(error_sum)] * 80
+        error2 = [1e14 + abs(error_sum)] * 80
         return np.hstack((error1, error2))
     
 
@@ -148,23 +148,18 @@ def euler_equation_solver(guesses, *args):
     # Chi_b is large, they will be.  This prevents that from happening.
     # I'm not sure if the constraints are needed for labor.
     # But we might as well put them in for now.
-    mask1 = n_guess < 0
-    mask2 = n_guess > p.ltilde
-    mask3 = b_guess <= 0
-    mask4 = np.isnan(n_guess)
-    mask5 = np.isnan(b_guess)
+    mask1 = (np.isnan(n_guess)) | (n_guess < 0) | (n_guess > p.ltilde)
+    mask2 = (np.isnan(b_guess)) | (b_guess <= 0)
     error2[mask1] = 1e14
-    error2[mask2] = 1e14
-    error1[mask3] = 1e14
-    error1[mask5] = 1e14
-    error2[mask4] = 1e14
+    error2[mask2] = 1e14 # Modified
+
     taxes = tax.total_taxes(r, w, b_s, n_guess, bq, factor, T_H, theta,
                             None, j, False, 'SS', p.e[:, j],
                             p.etr_params[-1, :, :], p)
     cons = household.get_cons(r, w, b_s, b_splus1, n_guess, bq, taxes,
                               p.e[:, j], p.tau_c[-1, :, j], p)
-    mask6 = cons < 0
-    error1[mask6] = 1e14
+    mask3 = cons < 0
+    error1[mask3] = 1e14
 
     return np.hstack((error1, error2))
 
@@ -251,8 +246,6 @@ def inner_loop(outer_loop_vars, p, client):
         new_r = firm.get_r(Y, K, p, 'SS')
     else:
         new_r = p.hh_r[-1]
-    if K < 0: # Modified
-        r = abs(r) # Modified
     new_w = firm.get_w_from_r(abs(new_r), p, 'SS') # Modified
     print('inner factor prices: ', new_r, new_w)
 
@@ -609,8 +602,16 @@ def SS_fsolve(guesses, *args):
         BQ = guesses[1:-2]
         T_H = guesses[-2]
         factor = guesses[-1]
-        if factor < 0:
-            return [1e5 * factor] * 10 # Modified
+        
+        B_temp = aggr.get_K(bssmat, p, 'SS', False) # Modified
+        Y_temp = T_H / p.alpha_T[-1] # Modified
+        K_temp = B_temp - p.debt_ratio_ss * Y_temp # Modified    
+        if r < 0: # Modified
+            return [1e3 * (1 + r + min(0, K_temp) + min(0, factor))] * 10 # Modified
+        elif K_temp < 0: # Modified
+                return [1e3 * (1 + K_temp + min(0, factor))] * 10 # Modified
+        elif factor < 0: # Modified
+            return [1e3 * (1 + factor)] * 10 # Modified
     else:
         BQ = guesses[1:-1]
         if p.baseline_spending:

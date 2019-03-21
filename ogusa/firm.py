@@ -197,26 +197,6 @@ def get_KLratio_from_r(r, p, method):
         bracket = (((1 - tau_b) * p.gamma * Z) /
                    (r + p.delta - tau_b * delta_tau))
         KLratio = bracket ** (1 / (1 - p.gamma))
-        import numpy as np
-        if np.isnan(KLratio).any():
-            print('--------------------------------------')
-            print('tau_b:')
-            print(tau_b)
-            print('--------------------------------------')
-            print('p.gamma:')
-            print(p.gamma)
-            print('--------------------------------------')
-            print('p.delta:')
-            print(p.delta)
-            print('--------------------------------------')
-            print('delta_tau:')
-            print(delta_tau)
-            print('--------------------------------------')
-            print('r:')
-            print(r)
-            print('--------------------------------------')
-            print('Z:')
-            print(Z)
     else:
         # General CES case
         bracket = ((r + p.delta - (delta_tau * tau_b)) /

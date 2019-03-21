@@ -931,10 +931,12 @@ def tax_func_loop(t, micro_data, beg_yr, s_min, s_max, age_specific,
                       'Total labor income', 'Total capital income',
                       'Adjusted total income', 'ETR', 'Weights']]
 
+    # Below Modified
     # Calculate average total income in each year
-    AvgInc[t-beg_yr] = \
-        (((data['Adjusted total income'] * data['Weights']).sum())
-         / data['Weights'].sum())
+    #AvgInc[t-beg_yr] = \
+    #    (((data['Adjusted total income'] * data['Weights']).sum())
+    #     / data['Weights'].sum())
+    AvgInc = np.ones(tpers) * 5.1 # Modified
 
     # Calculate average ETR and MTRs (weight by population weights
     #    and income) for each year

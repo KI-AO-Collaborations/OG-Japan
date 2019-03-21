@@ -164,13 +164,10 @@ def get_fert(totpers, min_yr, max_yr, graph=False):
         #         "Source: National Vital Statistics Reports, " +
         #         "Volume 64, Number 1, January 15, 2015.", fontsize=9)
         plt.tight_layout(rect=(0, 0.03, 1, 1))
+        # plt.text(-5, -0.018,
+        #          "Source: Human Fertility Collection", fontsize=9)
         # Create directory if OUTPUT directory does not already exist
-        output_fldr = "OUTPUT/Demographics"
-        output_dir = os.path.join(cur_path, output_fldr)
-        if os.access(output_dir, os.F_OK) is False:
-            os.makedirs(output_dir)
-        output_path = os.path.join(output_dir, "fert_rates")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/fert_rates")
 
     return fert_rates
 
@@ -272,13 +269,12 @@ def get_mort(totpers, min_yr, max_yr, graph=False):
         #         "Source: Actuarial Life table, 2011 Social Security " +
         #         "Administration.", fontsize=9)
         plt.tight_layout(rect=(0, 0.03, 1, 1))
+        # plt.annotate("Source: National Institude of Population and Social Security Research", (0,0), (-80,-20), fontsize=9, 
+        #      xycoords='axes fraction', textcoords='offset points', va='top')
+        # plt.text(-5, -0.058,
+        #          "Source: National Institude of Population and Social Security Research", fontsize=9)
         # Create directory if OUTPUT directory does not already exist
-        output_fldr = "OUTPUT/Demographics"
-        output_dir = os.path.join(cur_path, output_fldr)
-        if os.access(output_dir, os.F_OK) is False:
-            os.makedirs(output_dir)
-        output_path = os.path.join(output_dir, "mort_rates")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/mort_rates")
         # plt.show()
 
     return mort_rates, infmort_rate
@@ -379,13 +375,11 @@ def get_imm_resid(totpers, min_yr, max_yr, graph=True):
         plt.xlabel(r'Age $s$ (model periods)')
         plt.ylabel(r'Imm. rate $i_{s}$')
         plt.xlim((0, totpers + 1))
+        plt.tight_layout(rect=(0, 0.03, 1, 1))
+        # plt.text(-5, -0.058,
+        #          "Source: National Institude of Population and Social Security Research", fontsize=9)
         # Create directory if OUTPUT directory does not already exist
-        output_fldr = "OUTPUT/Demographics"
-        output_dir = os.path.join(cur_path, output_fldr)
-        if os.access(output_dir, os.F_OK) is False:
-            os.makedirs(output_dir)
-        output_path = os.path.join(output_dir, "imm_rates_orig")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/imm_rates_orig")
         # plt.show()
 
     return imm_rates
@@ -543,12 +537,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=True):
         ----------------------------------------------------------------
         '''
         #cur_path = os.path.split(os.path.abspath(__file__))[0]
-        output_fldr = "OUTPUT/Demographics"
-        output_dir = os.path.join(cur_path, output_fldr)
-        if os.access(output_dir, os.F_OK) is False:
-            os.makedirs(output_dir)
-        output_path = os.path.join(output_dir, "OrigVsFixSSpop")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/OrigVsFixSSpop")
         plt.show()
 
         # Print whether or not the adjusted immigration rates solved the
@@ -627,8 +616,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=True):
         plt.xlim((0, E + S + 1))
         plt.legend(loc='upper center')
         # Create directory if OUTPUT directory does not already exist
-        output_path = os.path.join(output_dir, "OrigVsAdjImm")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/OrigVsAdjImm")
         plt.show()
 
         # Plot population distributions for data_year, curr_year,
@@ -654,8 +642,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=True):
         plt.xlim((0, E+S+1))
         plt.legend(loc='upper right')
         # Create directory if OUTPUT directory does not already exist
-        output_path = os.path.join(output_dir, "PopDistPath")
-        plt.savefig(output_path)
+        plt.savefig("OUTPUT/demographics/PopDistPath")
         plt.show()
 
     # return omega_path_S, g_n_SS, omega_SSfx, survival rates,
@@ -663,3 +650,11 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=True):
     return (omega_path_S.T, g_n_SS, omega_SSfx[-S:] /
             omega_SSfx[-S:].sum(), 1-mort_rates_S, mort_rates_S,
             g_n_path, imm_rates_mat.T, omega_S_preTP)
+
+
+
+# get_fert(50, 0, 100, graph=True)
+# get_mort(50, 0, 100, graph=True)
+# get_imm_resid(100, 0, 100, graph=True)
+# get_pop_objs(20, 80, 100, 0, 100, 2019, GraphDiag=True)
+

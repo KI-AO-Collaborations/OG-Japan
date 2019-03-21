@@ -47,7 +47,7 @@ def run_micro_macro(user_params):
     kwargs = {'output_base': output_base, 'baseline_dir': BASELINE_DIR,
               'test': False, 'time_path': False, 'baseline': True,
               'user_params': user_params, 'guid': '_example',
-              'run_micro': True, 'data': 'cps', 'client': client,
+              'run_micro': False, 'data': 'cps', 'client': client,
               'num_workers': num_workers}
 
     start_time = time.time()

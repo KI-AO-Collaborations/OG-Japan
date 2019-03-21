@@ -42,6 +42,8 @@ from . import wealth
 from . import labor
 from . import SS
 from . import utils
+from ogusa import aggregates as aggr
+from ogusa import SS
 
 
 def chi_n_func(s, a0, a1, a2, a3, a4):
@@ -163,7 +165,7 @@ def chi_estimate(p, client=None):
     ages = np.linspace(20, 65, p.S // 2 + 5)
     #ages = np.linspace(20, 100, p.S)
 
-    est_output = opt.minimize(minstat, params_init,\
+    est_output = opt.minimize(minstat_init_calibrate, params_init,\
                 args=(p, client, data_moments, W, ages),\
                 method="L-BFGS-B",\
                 tol=1e-15, options={'eps': 1e-10})
@@ -177,17 +179,66 @@ def chi_estimate(p, client=None):
     slope = 1500#chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
     chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
     
-    #chi_n[chi_n < 0.5] = 0.5
-    #chi_n[chi_n < 0.5] = 0.5
+    chi_n[chi_n < 0.5] = 0.5
     p.chi_n = chi_n
     print('PARAMS for Chebyshev:', est_output.x)
-    with open("output.txt", "a") as text_file:
-        text_file.write('\nPARAMS for Chebyshev: ' + str(est_output.x) + '\n')
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nPARAMS for Chebyshev: ' + str(est_output.x) + '\n')
     pickle.dump(chi_n, open("chi_n.p", "wb"))
 
     ss_output = SS.run_SS(p)
     return ss_output
 
+def minstat_init_calibrate(params, *args):
+    a0, a1, a2, a3, a4 = params
+    p, client, data_moments, W, ages = args
+    chi_n = np.ones(p.S)
+    #chi_n = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    chi_n[:p.S // 2 + 5] = chebyshev_func(ages, a0, a1, a2, a3, a4)
+    #chi_n[p.S // 2 + 5:] = sixty_plus_chi
+    slope = chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
+    chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
+    chi_n[chi_n < 0.5] = 0.5
+
+    print("-----------------------------------------------------")
+    print('PARAMS AT START' + str(params))
+    print("-----------------------------------------------------")
+    b_guess = np.ones((p.S, p.J)) * 0.07
+    n_guess = np.ones((p.S, p.J)) * .4 * p.ltilde
+    rguess = 0.09
+    T_Hguess = 0.12
+    factorguess = 7.7 #70000 # Modified
+    BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
+    exit_early = [True]
+    ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
+    guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]
+    [solutions_fsolve, infodict, ier, message] =\
+            opt.fsolve(SS.SS_fsolve, guesses, args=ss_params_baseline,
+                       xtol=p.mindist_SS, full_output=True)
+    rss = solutions_fsolve[0]
+    BQss = solutions_fsolve[1:-2]
+    T_Hss = solutions_fsolve[-2]
+    factor_ss = solutions_fsolve[-1]
+    Yss = T_Hss/p.alpha_T[-1]
+    output = SS.SS_solver(b_guess, n_guess, rss, BQss, T_Hss,
+                        factor_ss, Yss, p, client, fsolve_flag)
+
+    model_moments = calc_moments(output, p.omega_SS, p.lambdas, p.S, p.J)
+    
+    print('Model moments:', model_moments)
+    print("-----------------------------------------------------")
+    # distance with levels
+    distance = np.dot(np.dot((np.array(model_moments[:9]) - np.array(data_moments)).T,W),
+                   np.array(model_moments[:9]) - np.array(data_moments))
+    #distance = ((np.array(model_moments) - np.array(data_moments))**2).sum()
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nDATA and MODEL DISTANCE: ' + str(distance) + '\n')
+    print('DATA and MODEL DISTANCE: ', distance)
+
+    # # distance with percentage diffs
+    # distance = (((model_moments - data_moments)/data_moments)**2).sum()
+
+    return distance
 
 def minstat(params, *args):
     '''
@@ -220,13 +271,13 @@ def minstat(params, *args):
     #chi_n[p.S // 2 + 5:] = sixty_plus_chi
     slope = chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
     chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
-    #chi_n[chi_n < 0.5] = 0.5
+    chi_n[chi_n < 0.5] = 0.5
 
     p.chi_n = chi_n
     #print(chi_n)
 
-    with open("output.txt", "a") as text_file:
-        text_file.write('\nPARAMS AT START\n' + str(params) + '\n')
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nPARAMS AT START\n' + str(params) + '\n')
     print("-----------------------------------------------------")
     print('PARAMS AT START' + str(params))
     print("-----------------------------------------------------")
@@ -234,21 +285,21 @@ def minstat(params, *args):
     try:
        ss_output = SS.run_SS(p, client)
     except:
-        with open("output.txt", "a") as text_file:
-            text_file.write('\nSteady state not found\n' + str(params) + '\n')
+        #with open("output.txt", "a") as text_file:
+        #    text_file.write('\nSteady state not found\n' + str(params) + '\n')
         print("-----------------------------------------------------")
         print("Steady state not found")
         print("-----------------------------------------------------")
         return 1e100
 
-    with open("output.txt", "a") as text_file:
-        text_file.write('\nPARAMS AT END\n' + str(params) + '\n')
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nPARAMS AT END\n' + str(params) + '\n')
     print("-----------------------------------------------------")
     print('PARAMS AT END', params)
     print("-----------------------------------------------------")
     model_moments = calc_moments(ss_output, p.omega_SS, p.lambdas, p.S, p.J)
-    with open("output.txt", "a") as text_file:
-        text_file.write('\nModel moments:\n' + str(model_moments) + '\n')
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nModel moments:\n' + str(model_moments) + '\n')
     print('Model moments:', model_moments)
     print("-----------------------------------------------------")
 
@@ -256,8 +307,8 @@ def minstat(params, *args):
     distance = np.dot(np.dot((np.array(model_moments[:9]) - np.array(data_moments)).T,W),
                    np.array(model_moments[:9]) - np.array(data_moments))
     #distance = ((np.array(model_moments) - np.array(data_moments))**2).sum()
-    with open("output.txt", "a") as text_file:
-        text_file.write('\nDATA and MODEL DISTANCE: ' + str(distance) + '\n')
+    #with open("output.txt", "a") as text_file:
+    #    text_file.write('\nDATA and MODEL DISTANCE: ' + str(distance) + '\n')
     print('DATA and MODEL DISTANCE: ', distance)
 
     # # distance with percentage diffs

@@ -168,38 +168,38 @@ def ETR_income(r, w, b, n, factor, e, etr_params, p):
         phi1 = 8.89727694e-04
         phi2 = 3.96781859e-01
         tau = phi0 - phi0 * (phi1 * I ** phi2 + 1)**(-1 / phi2)
-    if np.isnan(tau).any():
-        print('-----------------------------------------')
-        print('Invalid Tau')
-        if (X < 0).any():
-            print('Invalid X')
-            if (w < 0).any():
-                print('Invalid w')
-                print(w)
-                print('-----------------------------------------')
-            if (e < 0).any():
-                print('Invalid e')
-                print(e)
-                print('-----------------------------------------')
-            if (n < 0).any():
-                print('Invalid n')
-                print(n)
-                print('-----------------------------------------')
-        if (Y < 0).any():
-            print('Invalid Y')
-            if (r < 0).any():
-                print('Invalid r')
-                print(r)
-                print('-----------------------------------------')
-            if (b < 0).any():
-                print('Invalid b')
-                print(b)
-                print('-----------------------------------------')
-        if (factor < 0).any():
-            print('Invalid factor')
-            print(factor)
-            print('-----------------------------------------')
-        print('-----------------------------------------')
+    # if np.isnan(tau).any():
+    #     print('-----------------------------------------')
+    #     print('Invalid Tau')
+    #     if (X < 0).any():
+    #         print('Invalid X')
+    #         if (w < 0).any():
+    #             print('Invalid w')
+    #             print(w)
+    #             print('-----------------------------------------')
+    #         if (e < 0).any():
+    #             print('Invalid e')
+    #             print(e)
+    #             print('-----------------------------------------')
+    #         if (n < 0).any():
+    #             print('Invalid n')
+    #             print(n)
+    #             print('-----------------------------------------')
+    #     if (Y < 0).any():
+    #         print('Invalid Y')
+    #         if (r < 0).any():
+    #             print('Invalid r')
+    #             print(r)
+    #             print('-----------------------------------------')
+    #         if (b < 0).any():
+    #             print('Invalid b')
+    #             print(b)
+    #             print('-----------------------------------------')
+    #     if (factor < 0).any():
+    #         print('Invalid factor')
+    #         print(factor)
+    #         print('-----------------------------------------')
+    #     print('-----------------------------------------')
 
     return tau
 

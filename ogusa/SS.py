@@ -111,21 +111,21 @@ def euler_equation_solver(guesses, *args):
     b_splus1 = b_guess
 
     # Below Modified
-    if np.isnan(b_s).any() or (b_s < 0).any()\
-        or (n_guess < 0).any() or np.isnan(r).any()\
-        or np.isnan(w).any() or (w < 0).any():
-        b_s = np.array(b_s)
-        b_s = b_s[~np.isnan(b_s)]
-        n_guess = np.array(n_guess)
-        n_guess = n_guess[~np.isnan(n_guess)]
-        w = np.array(w)
-        w = w[~np.isnan(w)]
-        error_sum = b_s[b_s < 0].sum().sum() +\
-            n_guess[n_guess < 0].sum().sum() +\
-            w[w < 0].sum().sum()
-        error1 = [1e14 + abs(error_sum)] * 80
-        error2 = [1e14 + abs(error_sum)] * 80
-        return np.hstack((error1, error2))
+    # if np.isnan(b_s).any() or (b_s < 0).any()\
+    #     or (n_guess < 0).any() or np.isnan(r).any()\
+    #     or np.isnan(w).any() or (w < 0).any():
+    #     b_s = np.array(b_s)
+    #     b_s = b_s[~np.isnan(b_s)]
+    #     n_guess = np.array(n_guess)
+    #     n_guess = n_guess[~np.isnan(n_guess)]
+    #     w = np.array(w)
+    #     w = w[~np.isnan(w)]
+    #     error_sum = b_s[b_s < 0].sum().sum() +\
+    #         n_guess[n_guess < 0].sum().sum() +\
+    #         w[w < 0].sum().sum()
+    #     error1 = [1e14 + abs(error_sum)] * 80
+    #     error2 = [1e14 + abs(error_sum)] * 80
+    #     return np.hstack((error1, error2))
     
 
     theta = tax.replacement_rate_vals(n_guess, w, factor, j, p)
@@ -594,8 +594,9 @@ def SS_fsolve(guesses, *args):
         solutions = steady state values of b, n, w, r, factor,
                     T_H ((2*S*J+4)x1 array)
     '''
-    (bssmat, nssmat, T_Hss, factor_ss, p, client) = args
-
+    (bssmat, nssmat, T_Hss, factor_ss, p, client, exit_early) = args # Modified
+    if exit_early[0] == 1: # Modified
+        return [0.0] * 10 # Modified
     # Rename the inputs
     r = guesses[0]
     if p.baseline:
@@ -603,15 +604,15 @@ def SS_fsolve(guesses, *args):
         T_H = guesses[-2]
         factor = guesses[-1]
         
-        B_temp = aggr.get_K(bssmat, p, 'SS', False) # Modified
-        Y_temp = T_H / p.alpha_T[-1] # Modified
-        K_temp = B_temp - p.debt_ratio_ss * Y_temp # Modified    
-        if r < 0: # Modified
-            return [1e3 * (1 + r + min(0, K_temp) + min(0, factor))] * 10 # Modified
-        elif K_temp < 0: # Modified
-                return [1e3 * (1 + K_temp + min(0, factor))] * 10 # Modified
-        elif factor < 0: # Modified
-            return [1e3 * (1 + factor)] * 10 # Modified
+        # B_temp = aggr.get_K(bssmat, p, 'SS', False) # Modified
+        # Y_temp = T_H / p.alpha_T[-1] # Modified
+        # K_temp = B_temp - p.debt_ratio_ss * Y_temp # Modified    
+        # if r < 0: # Modified
+        #     return [1e3 * (1 + r + min(0, K_temp) + min(0, factor))] * 10 # Modified
+        # elif K_temp < 0: # Modified
+        #         return [1e3 * (1 + K_temp + min(0, factor))] * 10 # Modified
+        # elif factor < 0: # Modified
+        #     return [1e3 * (1 + factor)] * 10 # Modified
     else:
         BQ = guesses[1:-1]
         if p.baseline_spending:
@@ -647,6 +648,8 @@ def SS_fsolve(guesses, *args):
     print('Uncalibrated labor moments:') # Modified
     print(nssmat) # Modified
     print('----------------------------------------') # Modified
+    if exit_early[0]: # Modified
+        exit_early[0] = 1 # Modified
 
     # Create list of errors in general equilibrium variables
     error1 = new_r - r
@@ -734,7 +737,8 @@ def run_SS(p, client=None):
         T_Hguess = 0.12
         factorguess = 7.7 #70000 # Modified
         BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-        ss_params_baseline = (b_guess, n_guess, None, None, p, client)
+        exit_early = [False] # Modified
+        ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early) # Modified
         if p.use_zeta:
             guesses = [rguess] + list([BQguess]) + [T_Hguess, factorguess]
         else:
@@ -766,7 +770,8 @@ def run_SS(p, client=None):
              ss_solutions['factor_ss'])
         if p.baseline_spending:
             T_Hss = T_Hguess
-            ss_params_reform = (b_guess, n_guess, T_Hss, factor, p, client)
+            exit_early = [False] # Modified
+            ss_params_reform = (b_guess, n_guess, T_Hss, factor, p, client, exit_early) # Modified
             if p.use_zeta:
                 guesses = [rguess] + list([BQguess]) + [Yguess]
             else:
@@ -779,7 +784,8 @@ def run_SS(p, client=None):
             BQss = solutions_fsolve[1:-1]
             Yss = solutions_fsolve[-1]
         else:
-            ss_params_reform = (b_guess, n_guess, None, factor, p, client)
+            exit_early = [False] # Modified
+            ss_params_reform = (b_guess, n_guess, None, factor, p, client, exit_early) # Modified
             if p.use_zeta:
                 guesses = [rguess] + list([BQguess]) + [T_Hguess]
             else:

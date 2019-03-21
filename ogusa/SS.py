@@ -126,6 +126,7 @@ def euler_equation_solver(guesses, *args):
         error1 = [1e3 * error_sum] * 80
         error2 = [1e3 * error_sum] * 80
         return np.hstack((error1, error2))
+    
 
     theta = tax.replacement_rate_vals(n_guess, w, factor, j, p)
 
@@ -250,7 +251,9 @@ def inner_loop(outer_loop_vars, p, client):
         new_r = firm.get_r(Y, K, p, 'SS')
     else:
         new_r = p.hh_r[-1]
-    new_w = firm.get_w_from_r(new_r, p, 'SS')
+    if K < 0: # Modified
+        r = abs(r) # Modified
+    new_w = firm.get_w_from_r(abs(new_r), p, 'SS') # Modified
     print('inner factor prices: ', new_r, new_w)
 
     b_s = np.array(list(np.zeros(p.J).reshape(1, p.J)) +
@@ -606,6 +609,8 @@ def SS_fsolve(guesses, *args):
         BQ = guesses[1:-2]
         T_H = guesses[-2]
         factor = guesses[-1]
+        if factor < 0:
+            return [1e5 * factor] * 10 # Modified
     else:
         BQ = guesses[1:-1]
         if p.baseline_spending:
@@ -726,7 +731,7 @@ def run_SS(p, client=None):
         n_guess = np.ones((p.S, p.J)) * .4 * p.ltilde
         rguess = 0.09
         T_Hguess = 0.12
-        factorguess = 70000
+        factorguess = 7.7 #70000 # Modified
         BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
         ss_params_baseline = (b_guess, n_guess, None, None, p, client)
         if p.use_zeta:

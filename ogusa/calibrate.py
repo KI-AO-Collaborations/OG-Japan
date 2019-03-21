@@ -168,7 +168,7 @@ def chi_estimate(p, client=None):
     est_output = opt.minimize(minstat_init_calibrate, params_init,\
                 args=(p, client, data_moments, W, ages),\
                 method="L-BFGS-B",\
-                tol=1e-15, options={'eps': 1e-10})
+                tol=1e-15, options={'eps': 10})
     a0, a1, a2, a3, a4 = est_output.x
     #chi_n = chebyshev_func(ages, a0, a1, a2, a3, a4)
     chi_n = np.ones(p.S)
@@ -209,7 +209,7 @@ def minstat_init_calibrate(params, *args):
     T_Hguess = 0.12
     factorguess = 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-    exit_early = [True]
+    exit_early = [0, 2] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
     guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]
     [solutions_fsolve, infodict, ier, message] =\
@@ -220,8 +220,14 @@ def minstat_init_calibrate(params, *args):
     T_Hss = solutions_fsolve[-2]
     factor_ss = solutions_fsolve[-1]
     Yss = T_Hss/p.alpha_T[-1]
-    output = SS.SS_solver(b_guess, n_guess, rss, BQss, T_Hss,
+    fsolve_flag = True
+    try:
+        output = SS.SS_solver(b_guess, n_guess, rss, BQss, T_Hss,
                         factor_ss, Yss, p, client, fsolve_flag)
+    except:
+        print('RuntimeError: Steady state aggregate resource constraint not satisfied')
+        print('Luckily we caught the error, so minstat_init_calibrate will continue')
+        return 1e10
 
     model_moments = calc_moments(output, p.omega_SS, p.lambdas, p.S, p.J)
     

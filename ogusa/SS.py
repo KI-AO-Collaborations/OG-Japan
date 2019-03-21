@@ -595,7 +595,7 @@ def SS_fsolve(guesses, *args):
                     T_H ((2*S*J+4)x1 array)
     '''
     (bssmat, nssmat, T_Hss, factor_ss, p, client, exit_early) = args # Modified
-    if exit_early[0] == 1: # Modified
+    if exit_early[0] == exit_early[1]: # Modified
         return [0.0] * 10 # Modified
     # Rename the inputs
     r = guesses[0]
@@ -648,8 +648,9 @@ def SS_fsolve(guesses, *args):
     print('Uncalibrated labor moments:') # Modified
     print(nssmat) # Modified
     print('----------------------------------------') # Modified
-    if exit_early[0]: # Modified
-        exit_early[0] = 1 # Modified
+    if exit_early[1] > 0: # Modified
+        exit_early[0] += 1 # Modified
+        print('Exit early now ', exit_early[0])
 
     # Create list of errors in general equilibrium variables
     error1 = new_r - r
@@ -737,7 +738,7 @@ def run_SS(p, client=None):
         T_Hguess = 0.12
         factorguess = 7.7 #70000 # Modified
         BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-        exit_early = [False] # Modified
+        exit_early = [0, -1] # Modified
         ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early) # Modified
         if p.use_zeta:
             guesses = [rguess] + list([BQguess]) + [T_Hguess, factorguess]
@@ -770,7 +771,7 @@ def run_SS(p, client=None):
              ss_solutions['factor_ss'])
         if p.baseline_spending:
             T_Hss = T_Hguess
-            exit_early = [False] # Modified
+            exit_early = [0, -1] # Modified
             ss_params_reform = (b_guess, n_guess, T_Hss, factor, p, client, exit_early) # Modified
             if p.use_zeta:
                 guesses = [rguess] + list([BQguess]) + [Yguess]
@@ -784,7 +785,7 @@ def run_SS(p, client=None):
             BQss = solutions_fsolve[1:-1]
             Yss = solutions_fsolve[-1]
         else:
-            exit_early = [False] # Modified
+            exit_early = [0, -1] # Modified
             ss_params_reform = (b_guess, n_guess, None, factor, p, client, exit_early) # Modified
             if p.use_zeta:
                 guesses = [rguess] + list([BQguess]) + [T_Hguess]

@@ -122,7 +122,7 @@ def chi_estimate(p, client=None):
 
     print('About to start the while loop')
 
-    while ((abs(model_moments - data_moments) > 1e-2) & (chi_n[:45] > 0.5)).any()\
+    while ((abs(model_moments - data_moments) > 0.03) & (chi_n[:45] > 0.5)).any()\
         or ((chi_n[:45] <= 0.5) & (labor_above > data_moments)).any():
         both = (labor_below > 0) & (labor_above < np.inf)
         above = (labor_below == 0) & (labor_above < np.inf)

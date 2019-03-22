@@ -138,13 +138,22 @@ def chi_estimate(p, client=None):
         chi_above[above_data_below_above] = chi_n[:45][above_data_below_above]
         labor_below[below_data_above_below] = model_moments[below_data_above_below]
         chi_below[below_data_above_below] = chi_n[:45][below_data_above_below]
+        print('-------------------------------')
         print('New model moments:')
         print(model_moments)
+        print('Chi_n:')
+        print(chi_n)
+        print('-------------------------------')
 
+    print('-------------------------------')
     print('Calibration complete')
+    print('Final Chi_n:')
+    print(chi_n)
+    print('-------------------------------')
 
     with open("output.txt", "a") as text_file:
         text_file.write('\nFinal model moments: ' + str(model_moments) + '\n')
+        text_file.write('\nFinal chi_n: ' + str(chi_n) + '\n')
     pickle.dump(chi_n, open("chi_n.p", "wb"))
 
     ss_output = SS.run_SS(p)

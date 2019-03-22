@@ -59,9 +59,9 @@ def chebyshev_func(x, a0, a1, a2, a3, a4):
 def find_moments(p, client):
     b_guess = np.ones((p.S, p.J)) * 0.07
     n_guess = np.ones((p.S, p.J)) * .4 * p.ltilde
-    rguess = 0.09
+    rguess = 0.08961277823002804 # 0.09
     T_Hguess = 0.12
-    factorguess = 7.7 #70000 # Modified
+    factorguess = 12.73047710050195 # 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
     exit_early = [0, 10] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
@@ -100,17 +100,18 @@ def chi_estimate(p, client=None):
     ages_full = np.linspace(21, 65, p.S // 2 + 5)
     data_moments = si.splev(ages_full, labor_fun)
 
-    a0 = 1.25108169e+03
-    a1 = -1.19873316e+02
-    a2 = 2.20570513e+00
-    a3 = -1.76536132e-02
-    a4 = 5.19262962e-05
+    # a0 = 1.25108169e+03
+    # a1 = -1.19873316e+02
+    # a2 = 2.20570513e+00
+    # a3 = -1.76536132e-02
+    # a4 = 5.19262962e-05
 
-    chi_n = np.ones(p.S)
-    chi_n[:p.S // 2 + 5] = chebyshev_func(ages_full, a0, a1, a2, a3, a4)
-    slope = chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
-    chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
-    chi_n[chi_n < 0.5] = 0.5
+    # chi_n = np.ones(p.S)
+    # chi_n[:p.S // 2 + 5] = chebyshev_func(ages_full, a0, a1, a2, a3, a4)
+    # slope = chi_n[p.S // 2 + 5 - 1] - chi_n[p.S // 2 + 5 - 2]
+    # chi_n[p.S // 2 + 5 - 1:] = (np.linspace(65, 100, 36) - 65) * slope + chi_n[p.S // 2 + 5 - 1]
+    # chi_n[chi_n < 0.5] = 0.5
+    chi_n = pickle.load(open("chi_n.p", "rb"))
     p.chi_n = chi_n
 
     model_moments = find_moments(p, client)

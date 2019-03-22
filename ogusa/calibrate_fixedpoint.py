@@ -121,15 +121,35 @@ def chi_estimate(p, client=None):
     chi_above = np.zeros(p.S // 2 + 5)
 
     print('About to start the while loop')
+    eps_val = 0.01
 
-    while ((abs(model_moments - data_moments) > 0.03) & (chi_n[:45] > 0.5)).any()\
+    while ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5)).any()\
         or ((chi_n[:45] <= 0.5) & (labor_above > data_moments)).any():
+        ### Create arrays for labor boundaries
         both = (labor_below > 0) & (labor_above < np.inf)
         above = (labor_below == 0) & (labor_above < np.inf)
         below = (labor_below > 0) & (labor_above == np.inf)
-        chi_n[:45][both] = 0.5 * (chi_below[both] + chi_above[both])
+        ### Fix stuck boundaries
+        stuck = ((chi_above - chi_below) < 1e-5) & (abs(model_moments - data_moments) > eps_val)
+        above_stuck = (stuck) & (model_moments > data_moments)
+        below_stuck = (stuck) & (model_moments < data_moments)
+        labor_above[above_stuck] = np.inf
+        labor_below[below_stuck] = 0
+        chi_above[above_stuck] = 0
+        chi_below[below_stuck] = 0
+        ### Calculate convex combination factor
+        above_dist = abs(labor_above - data_moments)
+        below_dist = abs(data_moments - labor_below)
+        total_dist = above_dist + below_dist
+        above_factor = below_dist / total_dist
+        below_factor = above_dist / total_dist
+        #### Adjust by convex combination factor
+        chi_n[:45][both] = below_factor[both] * chi_below[both] +\
+            above_factor[both] * chi_above[both]
+        ### Adjust values that aren't bounded both above and below by large factors
         chi_n[:45][above] = 2 * chi_above[above]
         chi_n[:45][below] = 0.5 * chi_below[below]
+        ### Solve moments using new chi_n guesses
         p.chi_n = chi_n
         model_moments = find_moments(p, client)
         above_data_below_above = (model_moments > data_moments) & (model_moments < labor_above)

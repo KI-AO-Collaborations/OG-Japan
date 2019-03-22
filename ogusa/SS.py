@@ -381,6 +381,7 @@ def SS_solver(bmat, nmat, r, BQ, T_H, factor, Y, p, client,
         print('new_BQ in ss_solver:', new_BQ)
         print('new_Y in ss_solver:', new_Y)
         print('new_factor in ss_solver:', new_factor)
+        print('new_T_H in ss_solver:', new_T_H)
 
         r = utils.convex_combo(new_r, r, nu_ss)
         factor = utils.convex_combo(new_factor, factor, nu_ss)
@@ -663,6 +664,7 @@ def SS_fsolve(guesses, *args):
     print('new_BQ in ss_fsolve:', new_BQ)
     print('new_Y in ss_fsolve:', new_Y)
     print('new_factor in ss_fsolve:', new_factor)
+    print('new_T_H in ss_fsolve:', new_T_H)
 
     error1 = new_r - r
     error2 = new_BQ - BQ
@@ -823,6 +825,7 @@ def run_SS(p, client=None):
         print('BQss:', BQss)
         print('Yss:', Yss)
         print('factor:', factor)
+        print('T_Hss:', T_Hss)
         output = SS_solver(b_guess, n_guess, rss, BQss, T_Hss, factor,
                            Yss, p, client, fsolve_flag)
         if output['Gss'] < 0.:

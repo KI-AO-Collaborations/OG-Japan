@@ -377,6 +377,11 @@ def SS_solver(bmat, nmat, r, BQ, T_H, factor, Y, p, client,
          new_factor, new_BQ, average_income_model) =\
             inner_loop(outer_loop_vars, p, client)
 
+        print('new_r in ss_solver:', new_r)
+        print('new_BQ in ss_solver:', new_BQ)
+        print('new_Y in ss_solver:', new_Y)
+        print('new_factor in ss_solver:', new_factor)
+
         r = utils.convex_combo(new_r, r, nu_ss)
         factor = utils.convex_combo(new_factor, factor, nu_ss)
         BQ = utils.convex_combo(new_BQ, BQ, nu_ss)
@@ -654,6 +659,11 @@ def SS_fsolve(guesses, *args):
         print('Exit early now ', exit_early[0])
 
     # Create list of errors in general equilibrium variables
+    print('new_r in ss_fsolve:', new_r)
+    print('new_BQ in ss_fsolve:', new_BQ)
+    print('new_Y in ss_fsolve:', new_Y)
+    print('new_factor in ss_fsolve:', new_factor)
+
     error1 = new_r - r
     error2 = new_BQ - BQ
     if p.baseline:
@@ -809,6 +819,10 @@ def run_SS(p, client=None):
         # Return SS values of variables
         fsolve_flag = True
         # Return SS values of variables
+        print('rss:', rss)
+        print('BQss:', BQss)
+        print('Yss:', Yss)
+        print('factor:', factor)
         output = SS_solver(b_guess, n_guess, rss, BQss, T_Hss, factor,
                            Yss, p, client, fsolve_flag)
         if output['Gss'] < 0.:

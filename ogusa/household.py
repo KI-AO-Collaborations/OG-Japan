@@ -308,8 +308,26 @@ def FOC_savings(r, w, b, b_splus1, n, bq, factor, T_H, theta, e, rho,
         euler_error[-1] = (marg_ut_cons(cons[-1], p.sigma) *
                            (1 / (1 + tau_c[-1])) - savings_ut[-1])
     else:
-        euler_error[-1] = (marg_ut_cons(cons[-1], p.sigma) *
+        try: # Modified
+            euler_error[-1] = (marg_ut_cons(cons[-1], p.sigma) *
                            (1 / (1 + tau_c[-1])) - savings_ut[-1])
+        except: # Modified
+            print('------------------------------')
+            print('tau_c:')
+            print(tau_c)
+            print('------------------------------')
+            print('savings_ut')
+            print(savings_ut)
+            print('------------------------------')
+            print('cons:')
+            print(cons)
+            print('------------------------------')
+            print('p.sigma:')
+            print(p.sigma)
+            print('------------------------------')
+            print('marg_ut_cons:')
+            print(marg_ut_cons(cons[-1], p.sigma))
+            print('------------------------------')
 
     return euler_error
 

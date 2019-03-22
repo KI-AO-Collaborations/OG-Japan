@@ -156,6 +156,23 @@ def firstdoughnutring(guesses, r, w, bq, T_H, theta, factor, j,
     n = float(guesses[1])
     b_s = float(initial_b[-2, j])
 
+    # Below Modified
+    if np.isnan(b_s).any() or (np.array(b_s < 0)).any()\
+        or (np.array(n < 0)).any() or np.isnan(r).any()\
+        or np.isnan(w).any() or np.array((w < 0)).any():
+        b_s = np.array(b_s)
+        b_s = b_s[~np.isnan(b_s)]
+        n = np.array(n)
+        n = n[~np.isnan(n)]
+        w = np.array(w)
+        w = w[~np.isnan(w)]
+        error_sum = b_s[b_s < 0].sum().sum() +\
+            n[n < 0].sum().sum() +\
+            w[w < 0].sum().sum()
+        error1 = [1e14 + abs(error_sum)] * 80
+        error2 = [1e14 + abs(error_sum)] * 80
+        return np.hstack((error1, error2))
+
     # Find errors from FOC for savings and FOC for labor supply
     error1 = household.FOC_savings(np.array([r]), np.array([w]), b_s,
                                    np.array([b_splus1]), np.array([n]),
@@ -223,6 +240,23 @@ def twist_doughnut(guesses, r, w, bq, T_H, theta, factor, j, s, t,
     e_s = p.e[-length:, j]
     rho_s = p.rho[-length:]
     T_H_s = T_H[t:t + length]
+
+    # Below Modified
+    if np.isnan(b_s).any() or (b_s < 0).any()\
+        or (n_s < 0).any() or np.isnan(r).any()\
+        or np.isnan(w_s).any() or (w_s < 0).any():
+        b_s = np.array(b_s)
+        b_s = b_s[~np.isnan(b_s)]
+        n_s = np.array(n_s)
+        n_s = n_s[~np.isnan(n_s)]
+        w_s = np.array(w_s)
+        w_s = w_s[~np.isnan(w_s)]
+        error_sum = b_s[b_s < 0].sum().sum() +\
+            n_s[n_s < 0].sum().sum() +\
+            w_s[w_s < 0].sum().sum()
+        error1 = [1e14 + abs(error_sum)] * 80
+        error2 = [1e14 + abs(error_sum)] * 80
+        return np.hstack((error1, error2))
 
     error1 = household.FOC_savings(r_s, w_s, b_s, b_splus1, n_s, bq,
                                    factor, T_H_s, theta, e_s, rho_s,

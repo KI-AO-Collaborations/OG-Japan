@@ -7,7 +7,7 @@ Miscellaneous functions used in the OG-USA model.
 import os
 from io import StringIO
 import numpy as np
-import taxcalc # Modified
+#import taxcalc # Modified
 import pickle
 from pkg_resources import resource_stream, Requirement
 
@@ -24,8 +24,8 @@ DEFAULT_START_YEAR = 2018
 TC_LAST_YEAR = 2027
 
 # Year of data used (e.g. PUF or CPS year)
-CPS_START_YEAR = taxcalc.Records.CPSCSV_YEAR # Modified
-PUF_START_YEAR = taxcalc.Records.PUFCSV_YEAR # Modified
+#CPS_START_YEAR = taxcalc.Records.CPSCSV_YEAR # Modified
+#PUF_START_YEAR = taxcalc.Records.PUFCSV_YEAR # Modified
 
 
 def mkdirs(path):

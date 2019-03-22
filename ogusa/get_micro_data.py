@@ -15,7 +15,7 @@ This py-file creates the following other file(s):
     ./TAX_ESTIMATE_PATH/TxFuncEst_policy{}.pkl
 ------------------------------------------------------------------------
 '''
-from taxcalc import *
+#from taxcalc import * # Modified
 from pandas import DataFrame
 from dask.distributed import Client
 from dask import compute, delayed
@@ -23,12 +23,12 @@ import dask.multiprocessing
 import numpy as np
 import pickle
 import pkg_resources
-from ogusa.utils import DEFAULT_START_YEAR, TC_LAST_YEAR, PUF_START_YEAR
+from ogusa.utils import DEFAULT_START_YEAR, TC_LAST_YEAR #, PUF_START_YEAR # Modified
 
 
 def get_calculator(baseline, calculator_start_year, reform=None,
                    data=None, weights=None,
-                   records_start_year=PUF_START_YEAR):
+                   records_start_year=2014):#PUF_START_YEAR): # Modified
     '''
     --------------------------------------------------------------------
     This function creates the tax calculator object for the microsim

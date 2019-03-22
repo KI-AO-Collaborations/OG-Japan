@@ -57,7 +57,7 @@ def get_Y(K, L, p, method):
         print('K: ', K) # Modified
         print('L: ', L) # Modified
         print('p.gamma: ', p.gamma) # Modified
-        if K >= 0: # Modified
+        if (K >= 0).any(): # Modified
             Y = Z * (K ** p.gamma) * (L ** (1 - p.gamma))
         else: # Modified
             Y = - K * 1e10 # Modified

@@ -45,7 +45,7 @@ def run_micro_macro(user_params):
     '''
     output_base = BASELINE_DIR
     kwargs = {'output_base': output_base, 'baseline_dir': BASELINE_DIR,
-              'test': False, 'time_path': False, 'baseline': True,
+              'test': False, 'time_path': True, 'baseline': True,
               'user_params': user_params, 'guid': '_example',
               'run_micro': False, 'data': 'cps', 'client': client,
               'num_workers': num_workers}

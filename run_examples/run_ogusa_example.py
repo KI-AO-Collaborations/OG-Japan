@@ -30,8 +30,8 @@ def run_micro_macro(user_params):
 
     # Set some model parameters
     # See parameters.py for description of these parameters
-    alpha_T = np.ones(50) * 0.1234784428 # Modified
-    alpha_G = np.ones(7) * 0.01239313481 # Modified
+    alpha_T = np.ones(50) * 0.1230058215 # Modified
+    alpha_G = np.ones(7) * 0.01234569933 # Modified
     small_open = False
     user_params = {'frisch': 0.5, 'start_year': 2018,
                    'tau_b': [(0.21 * 0.55) * (0.017 / 0.055), (0.21 * 0.55) * (0.017 / 0.055)],

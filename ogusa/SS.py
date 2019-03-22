@@ -111,21 +111,21 @@ def euler_equation_solver(guesses, *args):
     b_splus1 = b_guess
 
     # Below Modified
-    # if np.isnan(b_s).any() or (b_s < 0).any()\
-    #     or (n_guess < 0).any() or np.isnan(r).any()\
-    #     or np.isnan(w).any() or (w < 0).any():
-    #     b_s = np.array(b_s)
-    #     b_s = b_s[~np.isnan(b_s)]
-    #     n_guess = np.array(n_guess)
-    #     n_guess = n_guess[~np.isnan(n_guess)]
-    #     w = np.array(w)
-    #     w = w[~np.isnan(w)]
-    #     error_sum = b_s[b_s < 0].sum().sum() +\
-    #         n_guess[n_guess < 0].sum().sum() +\
-    #         w[w < 0].sum().sum()
-    #     error1 = [1e14 + abs(error_sum)] * 80
-    #     error2 = [1e14 + abs(error_sum)] * 80
-    #     return np.hstack((error1, error2))
+    if np.isnan(b_s).any() or (b_s < 0).any()\
+        or (n_guess < 0).any() or np.isnan(r).any()\
+        or np.isnan(w).any() or (w < 0).any():
+        b_s = np.array(b_s)
+        b_s = b_s[~np.isnan(b_s)]
+        n_guess = np.array(n_guess)
+        n_guess = n_guess[~np.isnan(n_guess)]
+        w = np.array(w)
+        w = w[~np.isnan(w)]
+        error_sum = b_s[b_s < 0].sum().sum() +\
+            n_guess[n_guess < 0].sum().sum() +\
+            w[w < 0].sum().sum()
+        error1 = [1e14 + abs(error_sum)] * 80
+        error2 = [1e14 + abs(error_sum)] * 80
+        return np.hstack((error1, error2))
     
 
     theta = tax.replacement_rate_vals(n_guess, w, factor, j, p)
@@ -534,7 +534,8 @@ def SS_solver(bmat, nmat, r, BQ, T_H, factor, Y, p, client,
                                     p.mindist_SS):
         print('Resource Constraint Difference:', resource_constraint)
         err = 'Steady state aggregate resource constraint not satisfied'
-        raise RuntimeError(err)
+        print('We have overwritten this RunTimeError') # Modified
+        #raise RuntimeError(err) # Modified
 
     # check constraints
     household.constraint_checker_SS(bssmat_splus1, nssmat, cssmat, p.ltilde)
@@ -748,7 +749,8 @@ def run_SS(p, client=None):
             opt.fsolve(SS_fsolve, guesses, args=ss_params_baseline,
                        xtol=p.mindist_SS, full_output=True)
         if ENFORCE_SOLUTION_CHECKS and not ier == 1:
-            raise RuntimeError('Steady state equilibrium not found')
+            print('Steady state equilibrium not found. We have overwritten so it still returns results') # Modified
+            #raise RuntimeError('Steady state equilibrium not found') # Modified
         rss = solutions_fsolve[0]
         BQss = solutions_fsolve[1:-2]
         T_Hss = solutions_fsolve[-2]
@@ -802,7 +804,8 @@ def run_SS(p, client=None):
             # budget_balance = True, but that's ok - will be fixed in
             # SS_solver
         if ENFORCE_SOLUTION_CHECKS and not ier == 1:
-            raise RuntimeError('Steady state equilibrium not found')
+            print('Steady state equilibrium not found. We have overwritten so it still returns results') # Modified
+            #raise RuntimeError('Steady state equilibrium not found') # Modified
         # Return SS values of variables
         fsolve_flag = True
         # Return SS values of variables

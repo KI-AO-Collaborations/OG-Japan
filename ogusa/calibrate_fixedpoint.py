@@ -1,3 +1,10 @@
+'''
+AUTHORS: Kei Irizawa and Adam Oppenheimer
+DATE: March 22, 2019
+COPYRIGHT MARCH 22, 2019 KEI IRIZAWA AND ADAM OPPENHEIMER
+'''
+
+
 from __future__ import print_function
 
 '''
@@ -87,7 +94,10 @@ def find_moments(p, client):
 
     return model_moments
 
-def chi_estimate(p, client=None):    
+def chi_estimate(p, client=None):
+    '''
+    COPYRIGHT MARCH 22, 2019 KEI IRIZAWA AND ADAM OPPENHEIMER
+    '''
     # Generate labor data moments
     labor_hours = np.array([167, 165, 165, 165, 165, 166, 165, 165, 164])#, 166, 164])
     labor_part_rate = np.array([0.69, 0.849, 0.849, 0.847, 0.847, 0.859, 0.859, 0.709, 0.709])#, 0.212, 0.212])
@@ -95,10 +105,11 @@ def chi_estimate(p, client=None):
     labor_hours_adj = labor_hours * labor_part_rate * employ_rate
     labor_moments = labor_hours_adj * 12 / (365 * 17.5)
     data_moments_trunc = np.array(list(labor_moments.flatten()))
-    ages = np.array([20, 25, 30, 35, 40, 45, 50, 55, 60]) + 2.5
-    labor_fun = si.splrep(ages, data_moments_trunc)
-    ages_full = np.linspace(21, 65, p.S // 2 + 5)
-    data_moments = si.splev(ages_full, labor_fun)
+    #ages = np.array([20, 25, 30, 35, 40, 45, 50, 55, 60]) + 2.5
+    #labor_fun = si.splrep(ages, data_moments_trunc)
+    #ages_full = np.linspace(21, 65, p.S // 2 + 5)
+    #data_moments = si.splev(ages_full, labor_fun)
+    data_moments = np.repeat(data_moments_trunc, 5) # Set labor values to equal average over bin
 
     # a0 = 1.25108169e+03
     # a1 = -1.19873316e+02
@@ -130,14 +141,6 @@ def chi_estimate(p, client=None):
         both = (labor_below > 0) & (labor_above < np.inf)
         above = (labor_below == 0) & (labor_above < np.inf)
         below = (labor_below > 0) & (labor_above == np.inf)
-        ### Fix stuck boundaries
-        stuck = ((chi_above - chi_below) < 1e-5) & (abs(model_moments - data_moments) > eps_val)
-        above_stuck = (stuck) & (model_moments > data_moments)
-        below_stuck = (stuck) & (model_moments < data_moments)
-        labor_above[above_stuck] = np.inf
-        labor_below[below_stuck] = 0
-        chi_above[above_stuck] = 0
-        chi_below[below_stuck] = 0
         ### Calculate convex combination factor
         above_dist = abs(labor_above - data_moments)
         below_dist = abs(data_moments - labor_below)
@@ -165,6 +168,14 @@ def chi_estimate(p, client=None):
         print('Chi_n:')
         print(chi_n)
         print('-------------------------------')
+        ### Fix stuck boundaries
+        stuck = ((chi_above - chi_below) < 1e-5) & (abs(model_moments - data_moments) > eps_val)
+        above_stuck = (stuck) & (model_moments > data_moments)
+        below_stuck = (stuck) & (model_moments < data_moments)
+        labor_below[above_stuck] = 0
+        labor_above[below_stuck] = np.inf
+        chi_below[above_stuck] = 0
+        chi_above[below_stuck] = 0
 
     print('-------------------------------')
     print('Calibration complete')

@@ -650,8 +650,13 @@ def SS_fsolve(guesses, *args):
     print(nssmat) # Modified
     print('----------------------------------------') # Modified
     if exit_early[1] > 0: # Modified
-        exit_early[0] += 1 # Modified
-        print('Exit early now ', exit_early[0])
+        for l_moment in nssmat: # Modified
+            if l_moment > 0.5: # Modified
+                exit_early[0] = exit_early[1] # Modified
+                break # Modified
+        if exit_early[0] < exit_early[1]: # Modified
+            exit_early[0] += 1 # Modified
+        print('Exit early now ', exit_early[0]) # Modified
 
     # Create list of errors in general equilibrium variables
     error1 = new_r - r

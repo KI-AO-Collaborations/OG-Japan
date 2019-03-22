@@ -5,7 +5,7 @@ This module defines the runner() function, which is used to run OG-USA
 import pickle
 import os
 import time
-from ogusa import SS, TPI, utils, calibrate
+from ogusa import SS, TPI, utils, calibrate, calibrate_fixedpoint
 from ogusa.parameters import Specifications
 
 
@@ -45,7 +45,8 @@ def runner(output_base, baseline_dir, test=False, time_path=True,
         Run SS
     ------------------------------------------------------------------------
     '''
-    ss_outputs = calibrate.chi_estimate(spec, client=client)
+    ss_outputs = calibrate_fixedpoint.chi_estimate(spec, client=client)
+    #ss_outputs = calibrate.chi_estimate(spec, client=client)
     #ss_outputs = SS.run_SS(spec, client=client)
 
     '''

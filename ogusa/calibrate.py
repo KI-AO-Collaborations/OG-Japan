@@ -128,13 +128,11 @@ def chi_estimate(p, client=None):
     a3 = -1.53364020e-02#-6.81617866e-03
     a4 = 4.51819445e-05#2.00808642e-05
     
- 
-    # a0 = 2.07381e+02
-    # a1 = -1.03143105e+01
-    # a2 = 1.42760562e-01
-    # a3 = -8.41089078e-04
-    # a4 = 1.85173227e-06
-
+    a0 = 1.10262456e+03
+    a1 = -1.02616544e+02
+    a2 = 1.84708517e+00
+    a3 = -1.44960570e-02
+    a4 = 4.19655083e-05
 
     # sixty_plus_chi = 300
     params_init = np.array([a0, a1, a2, a3, a4])
@@ -165,10 +163,10 @@ def chi_estimate(p, client=None):
     ages = np.linspace(20, 65, p.S // 2 + 5)
     #ages = np.linspace(20, 100, p.S)
 
-    est_output = opt.minimize(minstat_init_calibrate, params_init,\
+    est_output = opt.minimize(minstat, params_init,\
                 args=(p, client, data_moments, W, ages),\
                 method="L-BFGS-B",\
-                tol=1e-15, options={'eps': 0.1})
+                tol=1e-15, options={'eps': 0.01})
     a0, a1, a2, a3, a4 = est_output.x
     #chi_n = chebyshev_func(ages, a0, a1, a2, a3, a4)
     chi_n = np.ones(p.S)
@@ -209,7 +207,7 @@ def minstat_init_calibrate(params, *args):
     T_Hguess = 0.12
     factorguess = 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-    exit_early = [0, 2] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
+    exit_early = [0, 10] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
     guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]
     [solutions_fsolve, infodict, ier, message] =\

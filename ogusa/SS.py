@@ -407,6 +407,7 @@ def SS_solver(bmat, nmat, r, BQ, T_H, factor, Y, p, client,
         dist_vec[iteration] = dist
         # Similar to TPI: if the distance between iterations increases, then
         # decrease the value of nu to prevent cycling
+        
         if iteration > 10:
             if dist_vec[iteration] - dist_vec[iteration - 1] > 0:
                 nu_ss /= 2.0

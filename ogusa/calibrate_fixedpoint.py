@@ -138,9 +138,10 @@ def chi_estimate(p, client=None):
     while ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5)).any()\
         or ((chi_n[:45] <= 0.5) & (labor_above > data_moments)).any():
         ### Create arrays for labor boundaries
-        both = (labor_below > 0) & (labor_above < np.inf)
-        above = (labor_below == 0) & (labor_above < np.inf)
-        below = (labor_below > 0) & (labor_above == np.inf)
+        still_calibrate = (abs(model_moments - data_moments) > eps_val)
+        both = (labor_below > 0) & (labor_above < np.inf) & (still_calibrate)
+        above = (labor_below == 0) & (labor_above < np.inf) & (still_calibrate)
+        below = (labor_below > 0) & (labor_above == np.inf) & (still_calibrate)
         ### Calculate convex combination factor
         above_dist = abs(labor_above - data_moments)
         below_dist = abs(data_moments - labor_below)
@@ -151,8 +152,8 @@ def chi_estimate(p, client=None):
         chi_n[:45][both] = below_factor[both] * chi_below[both] +\
             above_factor[both] * chi_above[both]
         ### Adjust values that aren't bounded both above and below by large factors
-        chi_n[:45][above] = 2 * chi_above[above]
-        chi_n[:45][below] = 0.5 * chi_below[below]
+        chi_n[:45][above] = 1.15 * chi_above[above]
+        chi_n[:45][below] = 0.85 * chi_below[below]
         ### Solve moments using new chi_n guesses
         p.chi_n = chi_n
         model_moments = find_moments(p, client)
@@ -164,9 +165,9 @@ def chi_estimate(p, client=None):
         chi_below[below_data_above_below] = chi_n[:45][below_data_above_below]
         print('-------------------------------')
         print('New model moments:')
-        print(model_moments)
+        print(list(model_moments))
         print('Chi_n:')
-        print(chi_n)
+        print(list(chi_n))
         print('-------------------------------')
         ### Fix stuck boundaries
         stuck = ((chi_above - chi_below) < 1e-5) & (abs(model_moments - data_moments) > eps_val)
@@ -180,7 +181,7 @@ def chi_estimate(p, client=None):
     print('-------------------------------')
     print('Calibration complete')
     print('Final Chi_n:')
-    print(chi_n)
+    print(list(chi_n))
     print('-------------------------------')
 
     with open("output.txt", "a") as text_file:

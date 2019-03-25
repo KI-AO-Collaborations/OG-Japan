@@ -70,7 +70,7 @@ def find_moments(p, client):
     T_Hguess = 0.12
     factorguess = 12.73047710050195 # 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-    exit_early = [0, 20] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
+    exit_early = [0, 10] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
                          # Put -1 to run to SS
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
     guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]
@@ -207,7 +207,7 @@ def chi_estimate(p, client=None):
             | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
         both = (((labor_below > 0) & (labor_above < np.inf)) |\
             ((labor_below == 0) & (labor_above == np.inf))) & (still_calibrate)
-        stuck = ((chi_below - chi_above) < 10 * eps_val) & (both)
+        stuck = ((chi_below - chi_above) < 1e-10) & (both)
         print('Chi differences:')
         print(chi_below[still_calibrate] - chi_above[still_calibrate])
         print('-------------------------------')
@@ -227,10 +227,10 @@ def chi_estimate(p, client=None):
         below_stuck = (stuck) & (model_moments < data_moments)
         print(str(np.sum(above_stuck)) + ' labor moments are being unstuck from being too high')
         print(str(np.sum(below_stuck)) + ' labor moments are being unstuck from being too low')
-        labor_below[above_stuck] = 0
-        labor_above[below_stuck] = np.inf
-        chi_below[above_stuck] *= 2
-        chi_above[below_stuck] *= 0.5
+        # labor_below[above_stuck] = 0
+        # labor_above[below_stuck] = np.inf
+        # chi_below[above_stuck] *= 2
+        # chi_above[below_stuck] *= 0.5
 
     print('-------------------------------')
     print('Calibration complete')

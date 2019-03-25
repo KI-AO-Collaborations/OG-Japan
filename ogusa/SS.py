@@ -653,7 +653,7 @@ def SS_fsolve(guesses, *args):
     nssmat = calibrate.calc_moments(nssmat, p.omega_SS, p.lambdas, p.S, p.J) # Modified
     print('----------------------------------------') # Modified
     print('Uncalibrated labor moments:') # Modified
-    print(nssmat) # Modified
+    print(list(nssmat)) # Modified
     print('----------------------------------------') # Modified
     if exit_early[1] > 0: # Modified
         exit_early[0] += 1 # Modified

@@ -1,3 +1,10 @@
+'''
+AUTHORS: Kei Irizawa and Adam Oppenheimer
+DATE: March 22, 2019
+COPYRIGHT MARCH 22, 2019 KEI IRIZAWA AND ADAM OPPENHEIMER
+'''
+
+
 from __future__ import print_function
 
 '''
@@ -64,6 +71,7 @@ def find_moments(p, client):
     factorguess = 12.73047710050195 # 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
     exit_early = [0, 10] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
+                         # Put -1 to run to SS
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
     guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]
     [solutions_fsolve, infodict, ier, message] =\
@@ -87,7 +95,10 @@ def find_moments(p, client):
 
     return model_moments
 
-def chi_estimate(p, client=None):    
+def chi_estimate(p, client=None):
+    '''
+    COPYRIGHT MARCH 22, 2019 KEI IRIZAWA AND ADAM OPPENHEIMER
+    '''
     # Generate labor data moments
     labor_hours = np.array([167, 165, 165, 165, 165, 166, 165, 165, 164])#, 166, 164])
     labor_part_rate = np.array([0.69, 0.849, 0.849, 0.847, 0.847, 0.859, 0.859, 0.709, 0.709])#, 0.212, 0.212])
@@ -95,10 +106,11 @@ def chi_estimate(p, client=None):
     labor_hours_adj = labor_hours * labor_part_rate * employ_rate
     labor_moments = labor_hours_adj * 12 / (365 * 17.5)
     data_moments_trunc = np.array(list(labor_moments.flatten()))
-    ages = np.array([20, 25, 30, 35, 40, 45, 50, 55, 60]) + 2.5
-    labor_fun = si.splrep(ages, data_moments_trunc)
-    ages_full = np.linspace(21, 65, p.S // 2 + 5)
-    data_moments = si.splev(ages_full, labor_fun)
+    #ages = np.array([20, 25, 30, 35, 40, 45, 50, 55, 60]) + 2.5
+    #labor_fun = si.splrep(ages, data_moments_trunc)
+    #ages_full = np.linspace(21, 65, p.S // 2 + 5)
+    #data_moments = si.splev(ages_full, labor_fun)
+    data_moments = np.repeat(data_moments_trunc, 5) # Set labor values to equal average over bin
 
     # a0 = 1.25108169e+03
     # a1 = -1.19873316e+02
@@ -121,23 +133,41 @@ def chi_estimate(p, client=None):
     chi_below = np.zeros(p.S // 2 + 5)
     chi_above = np.zeros(p.S // 2 + 5)
 
-    print('About to start the while loop')
-    eps_val = 0.01
+    chi_prev = np.zeros(p.S // 2 + 5)
 
-    while ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5)).any()\
-        or ((chi_n[:45] <= 0.5) & (labor_above > data_moments)).any():
+    print('About to start the while loop')
+    eps_val = 0.001
+    still_calibrate = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
+        | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+    moments_calibrated_per_step = []
+
+    while still_calibrate.any():
+        ### Check that 2 consecutive chi_n estimates aren't equal
+        if (chi_n[:45] == chi_prev).all():
+            raise RuntimeError('Calibration failure. No chi_n values changed between guesses')
+        chi_prev = np.copy(chi_n[:45])
+        ### Set above/below arrays based on model moments
+        above_data_below_above = (model_moments > data_moments) #& (model_moments < labor_above)
+        below_data_above_below = (model_moments < data_moments) #& (model_moments > labor_below)
+        # Had to comment out checking if closer than previous guess because if
+        # the result moves, the convex combination might be outside the range
+        # and it gets stuck in an infinite loop because the guess never improves
+        labor_above[above_data_below_above] = model_moments[above_data_below_above]
+        chi_above[above_data_below_above] = chi_n[:45][above_data_below_above]
+        labor_below[below_data_above_below] = model_moments[below_data_above_below]
+        chi_below[below_data_above_below] = chi_n[:45][below_data_above_below]
         ### Create arrays for labor boundaries
-        both = (labor_below > 0) & (labor_above < np.inf)
-        above = (labor_below == 0) & (labor_above < np.inf)
-        below = (labor_below > 0) & (labor_above == np.inf)
-        ### Fix stuck boundaries
-        stuck = ((chi_above - chi_below) < 1e-5) & (abs(model_moments - data_moments) > eps_val)
-        above_stuck = (stuck) & (model_moments > data_moments)
-        below_stuck = (stuck) & (model_moments < data_moments)
-        labor_above[above_stuck] = np.inf
-        labor_below[below_stuck] = 0
-        chi_above[above_stuck] = 0
-        chi_below[below_stuck] = 0
+        print(str(np.sum(still_calibrate)) + ' labor moments are still being calibrated')
+        moments_calibrated_per_step.append(np.sum(still_calibrate))
+        print('Moments calibrated at each iteration (including this iteration):')
+        print(moments_calibrated_per_step)
+        both = (((labor_below > 0) & (labor_above < np.inf)) |\
+            ((labor_below == 0) & (labor_above == np.inf))) & (still_calibrate)
+        above = (labor_below == 0) & (labor_above < np.inf) & (still_calibrate)
+        below = (labor_below > 0) & (labor_above == np.inf) & (still_calibrate)
+        print(str(np.sum(both)) + ' labor moments are being convexly shifted')
+        print(str(np.sum(above)) + ' labor moments are being shifted down')
+        print(str(np.sum(below)) + ' labor moments are being shifted up')
         ### Calculate convex combination factor
         above_dist = abs(labor_above - data_moments)
         below_dist = abs(data_moments - labor_below)
@@ -145,38 +175,82 @@ def chi_estimate(p, client=None):
         above_factor = below_dist / total_dist
         below_factor = above_dist / total_dist
         #### Adjust by convex combination factor
-        chi_n[:45][both] = below_factor[both] * chi_below[both] +\
-            above_factor[both] * chi_above[both]
+        chi_n[:45][both] = np.copy(below_factor[both] * chi_below[both] +\
+            above_factor[both] * chi_above[both])
+        invalid_factor = np.isnan(chi_n[:45][both]) # Modified
+        chi_n[:45][both][invalid_factor] = np.copy(0.5 * (chi_below[both][invalid_factor] + chi_above[both][invalid_factor])) # Modified
         ### Adjust values that aren't bounded both above and below by large factors
-        chi_n[:45][above] = 2 * chi_above[above]
-        chi_n[:45][below] = 0.5 * chi_below[below]
+        chi_n[:45][above] = np.copy(1.02 * chi_above[above])
+        chi_n[:45][below] = np.copy(0.98 * chi_below[below])
         ### Solve moments using new chi_n guesses
         p.chi_n = chi_n
         model_moments = find_moments(p, client)
-        above_data_below_above = (model_moments > data_moments) & (model_moments < labor_above)
-        below_data_above_below = (model_moments < data_moments) & (model_moments > labor_below)
-        labor_above[above_data_below_above] = model_moments[above_data_below_above]
-        chi_above[above_data_below_above] = chi_n[:45][above_data_below_above]
-        labor_below[below_data_above_below] = model_moments[below_data_above_below]
-        chi_below[below_data_above_below] = chi_n[:45][below_data_above_below]
         print('-------------------------------')
         print('New model moments:')
-        print(model_moments)
+        print(list(model_moments))
         print('Chi_n:')
-        print(chi_n)
+        print(list(chi_n))
         print('-------------------------------')
+        print('Labor moment differences:')
+        print(model_moments[still_calibrate] - data_moments[still_calibrate])
+        print('-------------------------------')
+        ### Fix stuck boundaries
+        #still_calibrate_stuck_1 = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
+        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        #still_calibrate_stuck_2 = ((abs(model_moments - data_moments) > 10 * eps_val) & (chi_n[:45] > 0.5))\
+        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        #stuck_1 = ((chi_below - chi_above) < 10 * eps_val) & (still_calibrate_stuck_1)
+        #stuck_2 = ((chi_below - chi_above) < 1e3 * eps_val) & (still_calibrate_stuck_2)
+        #stuck = (stuck_1) | (stuck_2)
+        ### Redefine still_calibrate and both based on new model moments
+        still_calibrate = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
+            | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        both = (((labor_below > 0) & (labor_above < np.inf)) |\
+            ((labor_below == 0) & (labor_above == np.inf))) & (still_calibrate)
+        stuck = ((chi_below - chi_above) < 1e-10) & (both)
+        print('Chi differences:')
+        print(chi_below[still_calibrate] - chi_above[still_calibrate])
+        print('-------------------------------')
+        print('Chi below:')
+        print(chi_below[still_calibrate])
+        print('-------------------------------')
+        print('Chi above:')
+        print(chi_above[still_calibrate])
+        print('-------------------------------')
+        print('Labor above:')
+        print(labor_above[still_calibrate])
+        print('-------------------------------')
+        print('Labor below:')
+        print(labor_below[still_calibrate])
+        print('-------------------------------')
+        above_stuck = (stuck) & (model_moments > data_moments)
+        below_stuck = (stuck) & (model_moments < data_moments)
+        print(str(np.sum(above_stuck)) + ' labor moments are being unstuck from being too high')
+        print(str(np.sum(below_stuck)) + ' labor moments are being unstuck from being too low')
+        # labor_below[above_stuck] = 0
+        # labor_above[below_stuck] = np.inf
+        # chi_below[above_stuck] *= 2
+        # chi_above[below_stuck] *= 0.5
 
     print('-------------------------------')
     print('Calibration complete')
     print('Final Chi_n:')
-    print(chi_n)
+    print(list(chi_n))
+    print('-------------------------------')
+    print('Final model moments:')
+    print(list(model_moments))
+    print('-------------------------------')
+    print('Moments calibrated at each iteration:')
+    print(moments_calibrated_per_step)
+    print('Number of iterations to solve:')
+    print(len(moments_calibrated_per_step))
     print('-------------------------------')
 
     with open("output.txt", "a") as text_file:
         text_file.write('\nFinal model moments: ' + str(model_moments) + '\n')
         text_file.write('\nFinal chi_n: ' + str(chi_n) + '\n')
     pickle.dump(chi_n, open("chi_n.p", "wb"))
-
+    stop
     ss_output = SS.run_SS(p)
     return ss_output
 

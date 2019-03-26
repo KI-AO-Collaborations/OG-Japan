@@ -70,7 +70,7 @@ def find_moments(p, client):
     T_Hguess = 0.12
     factorguess = 12.73047710050195 # 7.7 #70000 # Modified
     BQguess = aggr.get_BQ(rguess, b_guess, None, p, 'SS', False)
-    exit_early = [0, 10] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
+    exit_early = [0, -1] # 2nd value gives number of valid labor moments to consider before exiting SS_fsolve
                          # Put -1 to run to SS
     ss_params_baseline = (b_guess, n_guess, None, None, p, client, exit_early)
     guesses = [rguess] + list(BQguess) + [T_Hguess, factorguess]

@@ -134,11 +134,15 @@ def chi_estimate(p, client=None):
     chi_above = np.zeros(p.S // 2 + 5)
 
     chi_prev = np.zeros(p.S // 2 + 5)
+    consec_above = np.zeros(p.S // 2 + 5)
+    consec_below = np.zeros(p.S // 2 + 5)
 
     print('About to start the while loop')
     eps_val = 0.001
-    still_calibrate = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
-        | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+    #still_calibrate = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
+    #    | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+    still_calibrate = (abs(model_moments - data_moments) > eps_val) & ((chi_n[:45] > 0.5)\
+        | ((chi_n[:45] <= 0.5) & (labor_above > data_moments)))
     moments_calibrated_per_step = []
 
     while still_calibrate.any():
@@ -156,6 +160,12 @@ def chi_estimate(p, client=None):
         chi_above[above_data_below_above] = chi_n[:45][above_data_below_above]
         labor_below[below_data_above_below] = model_moments[below_data_above_below]
         chi_below[below_data_above_below] = chi_n[:45][below_data_above_below]
+        ### Set consecutive above/below values
+        consec_above[above_data_below_above] += 1
+        consec_above[below_data_above_below] = 0
+        consec_below[below_data_above_below] += 1
+        consec_below[above_data_below_above] = 0
+        consec = (consec_above >= 4) | (consec_below >= 4)
         ### Create arrays for labor boundaries
         print(str(np.sum(still_calibrate)) + ' labor moments are still being calibrated')
         moments_calibrated_per_step.append(np.sum(still_calibrate))
@@ -179,9 +189,10 @@ def chi_estimate(p, client=None):
             above_factor[both] * chi_above[both])
         invalid_factor = np.isnan(chi_n[:45][both]) # Modified
         chi_n[:45][both][invalid_factor] = np.copy(0.5 * (chi_below[both][invalid_factor] + chi_above[both][invalid_factor])) # Modified
-        ### Adjust values that aren't bounded both above and below by large factors
-        chi_n[:45][above] = np.copy(1.02 * chi_above[above])
-        chi_n[:45][below] = np.copy(0.98 * chi_below[below])
+        ### Adjust values that aren't bounded both above and below by labor error factors
+        error_factor = model_moments / data_moments
+        chi_n[:45][above] = np.copy(error_factor[above] * chi_above[above])#np.copy(1.02 * chi_above[above])
+        chi_n[:45][below] = np.copy(error_factor[below] * chi_below[below])#np.copy(0.98 * chi_below[below])
         ### Solve moments using new chi_n guesses
         p.chi_n = chi_n
         model_moments = find_moments(p, client)
@@ -194,20 +205,11 @@ def chi_estimate(p, client=None):
         print('Labor moment differences:')
         print(model_moments[still_calibrate] - data_moments[still_calibrate])
         print('-------------------------------')
-        ### Fix stuck boundaries
-        #still_calibrate_stuck_1 = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
-        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
-        #still_calibrate_stuck_2 = ((abs(model_moments - data_moments) > 10 * eps_val) & (chi_n[:45] > 0.5))\
-        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
-        #stuck_1 = ((chi_below - chi_above) < 10 * eps_val) & (still_calibrate_stuck_1)
-        #stuck_2 = ((chi_below - chi_above) < 1e3 * eps_val) & (still_calibrate_stuck_2)
-        #stuck = (stuck_1) | (stuck_2)
         ### Redefine still_calibrate and both based on new model moments
-        still_calibrate = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
-            | ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        still_calibrate = (abs(model_moments - data_moments) > eps_val) & ((chi_n[:45] > 0.5)\
+            | ((chi_n[:45] <= 0.5) & (labor_above > data_moments)))
         both = (((labor_below > 0) & (labor_above < np.inf)) |\
             ((labor_below == 0) & (labor_above == np.inf))) & (still_calibrate)
-        stuck = ((chi_below - chi_above) < 1e-10) & (both)
         print('Chi differences:')
         print(chi_below[still_calibrate] - chi_above[still_calibrate])
         print('-------------------------------')
@@ -223,14 +225,48 @@ def chi_estimate(p, client=None):
         print('Labor below:')
         print(labor_below[still_calibrate])
         print('-------------------------------')
-        above_stuck = (stuck) & (model_moments > data_moments)
-        below_stuck = (stuck) & (model_moments < data_moments)
-        print(str(np.sum(above_stuck)) + ' labor moments are being unstuck from being too high')
-        print(str(np.sum(below_stuck)) + ' labor moments are being unstuck from being too low')
-        # labor_below[above_stuck] = 0
-        # labor_above[below_stuck] = np.inf
-        # chi_below[above_stuck] *= 2
-        # chi_above[below_stuck] *= 0.5
+        ### Fix stuck boundaries
+        #still_calibrate_stuck_1 = ((abs(model_moments - data_moments) > eps_val) & (chi_n[:45] > 0.5))\
+        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        #still_calibrate_stuck_2 = ((abs(model_moments - data_moments) > 10 * eps_val) & (chi_n[:45] > 0.5))\
+        #| ((chi_n[:45] <= 0.5) & (labor_above > data_moments))
+        #stuck_1 = ((chi_below - chi_above) < 10 * eps_val) & (still_calibrate_stuck_1)
+        #stuck_2 = ((chi_below - chi_above) < 1e3 * eps_val) & (still_calibrate_stuck_2)
+        #stuck = (stuck_1) | (stuck_2)
+        stuck = ((chi_below - chi_above) < 10) & (consec) & (both)
+        if (stuck).any():
+            consec_above[stuck] = 0
+            consec_below[stuck] = 0
+            check_above_stuck = (stuck) & (model_moments > data_moments)
+            check_below_stuck = (stuck) & (model_moments < data_moments)
+            print(str(np.sum(check_above_stuck)) + ' labor moments are being checked to see if they are too high')
+            print(str(np.sum(check_below_stuck)) + ' labor moments are being checked to see if they are too low')
+            ### Make sure chi_n bounds are still valid
+            check_chi_n = chi_n.copy()
+            check_chi_n[:45][check_above_stuck] = np.copy(chi_below[check_above_stuck])
+            check_chi_n[:45][check_below_stuck] = np.copy(chi_above[check_below_stuck])
+            p.chi_n = check_chi_n
+            check_model_moments = find_moments(p, client)
+            above_stuck = (check_above_stuck) & (check_model_moments > data_moments)
+            below_stuck = (check_below_stuck) & (check_model_moments < data_moments)
+            print(str(np.sum(above_stuck)) + ' labor moments are being unstuck from being too high')
+            print(str(np.sum(below_stuck)) + ' labor moments are being unstuck from being too low')
+            total_stuck = str(np.sum(above_stuck) + np.sum(below_stuck))
+            moments_calibrated_per_step.append(str(np.sum(stuck)) + '(checked) ' + total_stuck + '(stuck)')
+            print('Moments calibrated at each iteration (including this iteration):')
+            print(moments_calibrated_per_step)
+            labor_below[above_stuck] = 0
+            labor_above[below_stuck] = np.inf
+            chi_below[above_stuck] *= 2
+            chi_above[below_stuck] *= 0.5
+            still_calibrate = (abs(check_model_moments - data_moments) > eps_val) & ((check_chi_n[:45] > 0.5)\
+                | ((check_chi_n[:45] <= 0.5) & (labor_above > data_moments)))
+            if not (still_calibrate).any():
+                chi_n = check_chi_n
+                model_moments = check_model_moments
+        else:
+            print('No labor moments are stuck')
+        
 
     print('-------------------------------')
     print('Calibration complete')

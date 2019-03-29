@@ -21,7 +21,7 @@ to release. Stay tuned for an upcoming release!
 * Clone this repository to a directory on your computer
 * From the terminal (or Conda command prompt), navigate to the directory to which you cloned this repository and run `conda env create -f environment.yml`
 * Then, `source activate ogusa-dev` (on Mac/Linux) or `activate ogusa-dev` on Windows.
-* Then install by `pip install -e .`
+* Then install by `pip3 install -e .`
 * Navigate to `./run_examples`
 * Run the model with an example reform from terminal/command prompt by typing `python run_ogusa_example.py`
 * You can adjust the `./run_examples/run_ogusa_example.py` by adjusting the individual income tax reform (using a dictionary or JSON file in a format that is consistent with [Tax Calculator](https://github.com/open-source-economics/Tax-Calculator)) or other model parameters specified in the `user_params` or `kwargs` dictionaries.

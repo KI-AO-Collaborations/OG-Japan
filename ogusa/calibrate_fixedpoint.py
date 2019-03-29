@@ -191,8 +191,8 @@ def chi_estimate(p, client=None):
         chi_n[:45][both][invalid_factor] = np.copy(0.5 * (chi_below[both][invalid_factor] + chi_above[both][invalid_factor])) # Modified
         ### Adjust values that aren't bounded both above and below by labor error factors
         error_factor = model_moments / data_moments
-        chi_n[:45][above] = np.copy(error_factor[above] * chi_above[above])#np.copy(1.02 * chi_above[above])
-        chi_n[:45][below] = np.copy(error_factor[below] * chi_below[below])#np.copy(0.98 * chi_below[below])
+        chi_n[:45][above] = np.copy(np.minimum(error_factor[above] * chi_above[above], 1.02 * chi_above[above]))#np.copy(1.02 * chi_above[above])
+        chi_n[:45][below] = np.copy(np.maximum(error_factor[below] * chi_below[below], 0.98 * chi_below[below]))#np.copy(0.98 * chi_below[below])
         ### Solve moments using new chi_n guesses
         p.chi_n = chi_n
         model_moments = find_moments(p, client)

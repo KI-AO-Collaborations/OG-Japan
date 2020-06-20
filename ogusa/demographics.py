@@ -66,6 +66,7 @@ def get_fert(totpers, min_yr, max_yr, graph=False):
     fert_data["Values"] = fert_list
     fert_data["Values"] = fert_data["Values"] / 2
 
+    # Generate interpolation functions for fertility rates
     fert_func = si.splrep(fert_data["Age"], fert_data["Values"])
 
     #### AGE BIN CREATION
